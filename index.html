@@ -148,7 +148,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <button class="tab" data-view="inquilinos">👥 Inquilinos</button>
   <button class="tab" data-view="contratos">📄 Contratos</button>
   <button class="tab" data-view="cobros">💰 Cobros</button>
+  <button class="tab" data-view="garantias">🔐 Garantías</button>
+  <button class="tab" data-view="ajustes">📈 Ajustes</button>
   <button class="tab" data-view="gastos">🧾 Gastos</button>
+  <button class="tab" data-view="liquidacion">💵 Liquidación</button>
 </nav>
 
 <main>
@@ -162,6 +165,15 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <table>
         <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Período</th><th>Monto</th><th>Estado</th></tr></thead>
         <tbody id="dash-cobros"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>📈 Ajustes próximos (60 días)</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Monto actual</th><th>Ajusta el</th><th>Días</th></tr></thead>
+        <tbody id="dash-ajustes"></tbody>
       </table>
     </div>
   </div>
@@ -242,7 +254,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="field"><label>Día de vencimiento</label><input id="c-dia" type="number" min="1" max="31" placeholder="10"></div>
       <div class="field"><label>Ajuste cada (meses)</label>
         <select id="c-ajuste"><option value="0">Sin ajuste</option><option value="3">3 meses</option><option value="4">4 meses</option><option value="6">6 meses</option><option value="12">12 meses</option></select></div>
-      <div class="field"><label>Depósito ($)</label><input id="c-deposito" type="number" placeholder="0"></div>
+      <div class="field"><label>Depósito acordado</label><input id="c-deposito" type="number" placeholder="0"></div>
+      <div class="field"><label>Moneda del depósito</label>
+        <select id="c-deposito-moneda"><option value="ARS">Pesos (ARS)</option><option value="USD">Dólares (USD)</option></select></div>
     </div>
     <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarContrato()">Guardar contrato</button></div>
   </div>
@@ -253,7 +267,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Inicio</th><th>Fin</th><th>Mensual</th><th>Ajuste</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Inicio</th><th>Fin</th><th>Mensual</th><th>Adicionales</th><th>Estado</th><th></th></tr></thead>
         <tbody id="tbl-contratos"><tr><td colspan="8" class="loading">Cargando…</td></tr></tbody>
       </table>
     </div>
@@ -266,13 +280,15 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="panel-head"><h2>➕ Registrar cobro</h2></div>
     <div class="grid">
       <div class="field"><label>Contrato *</label><select id="co-contrato" onchange="autoMonto()"></select></div>
-      <div class="field"><label>Período *</label><input id="co-periodo" type="month"></div>
+      <div class="field"><label>Período *</label><input id="co-periodo" type="month" onchange="recalcCobro()"></div>
       <div class="field"><label>Monto cobrado ($) *</label><input id="co-monto" type="number" placeholder="0"></div>
       <div class="field"><label>Fecha de pago</label><input id="co-fecha" type="date"></div>
       <div class="field"><label>Medio de pago</label>
         <select id="co-medio"><option>Efectivo</option><option>Transferencia</option><option>Depósito</option><option>Cheque</option><option>Otro</option></select></div>
       <div class="field"><label>Notas</label><input id="co-notas" placeholder="Observaciones"></div>
     </div>
+    <div id="co-adic-box" style="margin-top:14px"></div>
+    <div id="co-desglose" class="muted" style="margin-top:12px;font-size:13px"></div>
     <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarCobro()">Registrar cobro</button></div>
   </div>
   <div class="panel">
@@ -283,8 +299,92 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Período</th><th>Monto</th><th>Fecha pago</th><th>Medio</th><th>Recibo</th><th></th></tr></thead>
-        <tbody id="tbl-cobros"><tr><td colspan="8" class="loading">Cargando…</td></tr></tbody>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Período</th><th>Alquiler</th><th>Gastos com.</th><th>Total</th><th>Fecha pago</th><th>Medio</th><th>Recibo</th><th></th></tr></thead>
+        <tbody id="tbl-cobros"><tr><td colspan="10" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GARANTÍAS ============ -->
+<section id="garantias" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Registrar movimiento de garantía</h2></div>
+    <div class="grid">
+      <div class="field"><label>Contrato *</label><select id="ga-contrato"></select></div>
+      <div class="field"><label>Tipo de movimiento *</label>
+        <select id="ga-tipo" onchange="toggleGaTipo()">
+          <option value="pago">Pago de depósito (recibo)</option>
+          <option value="conversion">Conversión a dólares (atesoro)</option>
+          <option value="devolucion">Devolución al inquilino</option>
+        </select></div>
+      <div class="field"><label>Fecha</label><input id="ga-fecha" type="date"></div>
+      <div class="field ga-pd"><label>Moneda</label>
+        <select id="ga-moneda"><option value="ARS">Pesos (ARS)</option><option value="USD">Dólares (USD)</option></select></div>
+      <div class="field ga-pd"><label>Monto *</label><input id="ga-monto" type="number" placeholder="0"></div>
+      <div class="field ga-conv" style="display:none"><label>Pesos a convertir ($)</label><input id="ga-conv-ars" type="number" placeholder="0" oninput="autoConvUSD()"></div>
+      <div class="field ga-conv" style="display:none"><label>Cotización ($/US$)</label><input id="ga-conv-cotiz" type="number" placeholder="0" oninput="autoConvUSD()"></div>
+      <div class="field ga-conv" style="display:none"><label>Dólares comprados (US$)</label><input id="ga-conv-usd" type="number" placeholder="0"></div>
+      <div class="field"><label>Notas</label><input id="ga-notas" placeholder="Observaciones"></div>
+    </div>
+    <p class="muted" style="margin-top:12px;font-size:12.5px">💡 <b>Pago</b> = el inquilino entrega parte (o todo) del depósito. <b>Conversión</b> = pasás pesos atesorados a dólares. <b>Devolución</b> = le devolvés la garantía al terminar el contrato.</p>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarGarantia()">Registrar movimiento</button></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>📊 Estado de garantías por contrato</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Acordado</th><th>Pagado</th><th>Pendiente</th><th>Atesorado (lo que tengo)</th></tr></thead>
+        <tbody id="tbl-gar-estado"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>🔐 Movimientos de garantía</h2></div>
+    <div class="filters">
+      <select id="f-gar-contrato" onchange="renderGarantias()"><option value="">Todos los contratos</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Propiedad</th><th>Inquilino</th><th>Tipo</th><th>Detalle</th><th>Comprobante</th><th></th></tr></thead>
+        <tbody id="tbl-gar-mov"><tr><td colspan="7" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AJUSTES ============ -->
+<section id="ajustes" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Registrar ajuste de alquiler</h2></div>
+    <div class="grid">
+      <div class="field"><label>Contrato *</label><select id="aj-contrato" onchange="ajInfo()"></select></div>
+      <div class="field"><label>% de aumento</label><input id="aj-pct" type="number" placeholder="Ej: 25" oninput="ajDesdePct()"></div>
+      <div class="field"><label>Nuevo monto mensual ($) *</label><input id="aj-nuevo" type="number" placeholder="0" oninput="ajDesdeMonto()"></div>
+      <div class="field"><label>Vigente desde</label><input id="aj-fecha" type="date"></div>
+    </div>
+    <div id="aj-info" class="muted" style="margin-top:12px;font-size:13px"></div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarAjuste()">Registrar ajuste</button></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>🔔 Próximos ajustes</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Monto actual</th><th>Frecuencia</th><th>Próximo ajuste</th><th>Días</th><th></th></tr></thead>
+        <tbody id="tbl-aj-prox"><tr><td colspan="7" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>📜 Historial de ajustes</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Propiedad</th><th>Inquilino</th><th>Monto anterior</th><th>Monto nuevo</th><th>%</th><th>Aviso</th></tr></thead>
+        <tbody id="tbl-aj-hist"><tr><td colspan="7" class="loading">Cargando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -295,31 +395,77 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="panel">
     <div class="panel-head"><h2>➕ Registrar gasto</h2></div>
     <div class="grid">
-      <div class="field"><label>Propiedad</label><select id="g-prop"></select></div>
-      <div class="field"><label>Tipo</label>
-        <select id="g-tipo"><option>Expensas</option><option>Reparación</option><option>Impuesto / ABL</option><option>Servicios</option><option>Inmobiliaria</option><option>Seguro</option><option>Otro</option></select></div>
-      <div class="field"><label>Descripción</label><input id="g-desc" placeholder="Detalle del gasto"></div>
-      <div class="field"><label>Monto ($) *</label><input id="g-monto" type="number" placeholder="0"></div>
       <div class="field"><label>Fecha</label><input id="g-fecha" type="date"></div>
+      <div class="field"><label>Ítem *</label><input id="g-item" placeholder="Ej: Expensas, ABL, limpieza…"></div>
+      <div class="field"><label>Monto ($) *</label><input id="g-monto" type="number" placeholder="0"></div>
+      <div class="field"><label>¿Prorrateado?</label>
+        <select id="g-prorrateado" onchange="toggleDomicilio()"><option value="no">No</option><option value="si">Sí — gasto común</option></select></div>
+      <div class="field" id="g-dom-field" style="display:none"><label>Domicilio a prorratear</label><select id="g-domicilio"></select></div>
     </div>
+    <p class="muted" style="margin-top:12px;font-size:12.5px">💡 Si marcás <b>Prorrateado: Sí</b>, el monto se divide entre las unidades ocupadas del domicilio elegido y se suma como <b>gastos comunes</b> al alquiler de cada inquilino en la cobranza del mes de la fecha.</p>
     <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarGasto()">Registrar gasto</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>🧾 Gastos registrados</h2></div>
     <div class="filters">
       <input id="f-gasto-periodo" type="month" onchange="renderGastos()">
-      <select id="f-gasto-prop" onchange="renderGastos()"><option value="">Todas las propiedades</option></select>
+      <select id="f-gasto-dom" onchange="renderGastos()"><option value="">Todos los domicilios</option></select>
+      <button class="btn btn-ghost btn-sm" onclick="extractoProrrateados()">📄 Extracto prorrateados (PDF)</button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Fecha</th><th>Propiedad</th><th>Tipo</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Ítem</th><th>Monto</th><th>Prorrateado</th><th>Domicilio</th><th></th></tr></thead>
         <tbody id="tbl-gastos"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
       </table>
     </div>
   </div>
 </section>
 
+<!-- ============ LIQUIDACIÓN ============ -->
+<section id="liquidacion" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>💵 Liquidación mensual</h2></div>
+    <div class="grid">
+      <div class="field"><label>Mes a liquidar *</label><input id="liq-mes" type="month" onchange="renderLiqCalc()"></div>
+      <div class="field"><label>% administración</label><input id="liq-admin" type="number" placeholder="Ej: 10" oninput="renderLiqCalc()"></div>
+      <div class="field"><label>Partes iguales</label><input id="liq-partes" type="number" value="4" min="1" oninput="renderLiqCalc()"></div>
+    </div>
+    <div id="liq-calc" style="margin-top:20px"></div>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="guardarLiquidacion()">Guardar liquidación</button>
+      <button class="btn btn-ghost" onclick="liquidacionPDF('calc')">📄 PDF</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>📜 Liquidaciones guardadas</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mes</th><th>Cobrado</th><th>Gastos</th><th>Admin.</th><th>Neto</th><th>Cada parte</th><th>PDF</th><th></th></tr></thead>
+        <tbody id="tbl-liq"><tr><td colspan="8" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 </main>
+
+<!-- MODAL ÍTEMS ADICIONALES -->
+<div class="modal" id="modal-adic">
+  <div class="modal-box" style="max-width:520px">
+    <h3>➕ Ítems adicionales</h3>
+    <p id="adic-sub" style="margin-bottom:14px"></p>
+    <div id="adic-list" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px">
+      <div style="flex:2;min-width:130px"><label>Concepto</label><input id="adic-nombre" placeholder="Ej: Internet"></div>
+      <div style="flex:1;min-width:90px"><label>Monto sugerido ($)</label><input id="adic-monto" type="number" placeholder="0"></div>
+      <button class="btn btn-primary" onclick="agregarAdic()">Agregar</button>
+    </div>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn btn-ghost" onclick="cerrarAdic()">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL ELIMINAR -->
 <div class="modal" id="modal-del">
@@ -337,7 +483,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, orderBy }
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, orderBy }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ============================================================
@@ -370,6 +516,8 @@ let inquilinosCache = [];
 let contratosCache = [];
 let cobrosCache = [];
 let gastosCache = [];
+let garantiasCache = [];
+let liquidacionesCache = [];
 
 /* ---------- HELPERS ---------- */
 const $ = id => document.getElementById(id);
@@ -398,18 +546,22 @@ document.querySelectorAll('.tab').forEach(t=>{
 /* ============ CARGA GENERAL ============ */
 async function cargarTodo(){
   if(!db) return;
-  const [p,i,c,co,g] = await Promise.all([
+  const [p,i,c,co,g,ga,liq] = await Promise.all([
     getDocs(collection(db,'propiedades')),
     getDocs(collection(db,'inquilinos')),
     getDocs(collection(db,'contratos')),
     getDocs(collection(db,'cobros')),
-    getDocs(collection(db,'gastos'))
+    getDocs(collection(db,'gastos')),
+    getDocs(collection(db,'garantias')),
+    getDocs(collection(db,'liquidaciones'))
   ]);
   propiedadesCache = p.docs.map(d=>({id:d.id,...d.data()}));
   inquilinosCache  = i.docs.map(d=>({id:d.id,...d.data()}));
   contratosCache   = c.docs.map(d=>({id:d.id,...d.data()}));
   cobrosCache      = co.docs.map(d=>({id:d.id,...d.data()}));
   gastosCache      = g.docs.map(d=>({id:d.id,...d.data()}));
+  garantiasCache   = ga.docs.map(d=>({id:d.id,...d.data()}));
+  liquidacionesCache = liq.docs.map(d=>({id:d.id,...d.data()}));
   // estado ocupado/libre según contratos activos
   const ocupadas = new Set(contratosCache.filter(c=>c.estado==='activo').map(c=>c.propiedadId));
   propiedadesCache.forEach(p=>p.estado = ocupadas.has(p.id)?'ocupado':'libre');
@@ -417,7 +569,9 @@ async function cargarTodo(){
 }
 function renderAll(){
   renderPropiedades(); renderInquilinos(); renderContratos();
-  renderCobros(); renderGastos(); renderDashboard();
+  renderCobros(); renderGastos(); renderGarantias();
+  renderAjustes(); renderDashboard(); renderDashAjustes();
+  renderLiquidaciones();
   llenarSelects();
 }
 
@@ -482,6 +636,7 @@ window.guardarContrato = async ()=>{
     fechaInicio:$('c-inicio').value, fechaFin:$('c-fin').value,
     montoMensual:+$('c-monto').value||0, diaVencimiento:+$('c-dia').value||10,
     ajusteMeses:+$('c-ajuste').value||0, deposito:+$('c-deposito').value||0,
+    depositoMoneda:$('c-deposito-moneda').value,
     estado:'activo', creado:hoy()
   });
   ['c-inicio','c-fin','c-monto','c-dia','c-deposito'].forEach(id=>$(id).value='');
@@ -493,29 +648,125 @@ window.renderContratos = ()=>{
   if(f) rows=rows.filter(c=>c.estado===f);
   if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Sin contratos aún</td></tr>'; return; }
   tb.innerHTML=rows.map(c=>{
-    const aj = c.ajusteMeses? c.ajusteMeses+' meses':'—';
+    const ad = c.adicionales||[];
+    const adHtml = ad.length
+      ? ad.map(a=>`<span class="badge badge-blue" style="margin:1px">${a.nombre}</span>`).join(' ')
+      : '<span class="muted">—</span>';
     return `<tr>
     <td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
     <td class="muted">${fechaCorta(c.fechaInicio)}</td><td class="muted">${fechaCorta(c.fechaFin)}</td>
-    <td>${fmt(c.montoMensual)}</td><td class="muted">${aj}</td>
+    <td>${fmt(c.montoMensual)}</td>
+    <td>${adHtml}</td>
     <td><span class="badge ${c.estado==='activo'?'badge-green':'badge-gray'}">${c.estado==='activo'?'Activo':'Finalizado'}</span></td>
     <td style="white-space:nowrap">
+      <button class="btn-icon" title="Ítems adicionales (internet, cochera…)" onclick="abrirAdic('${c.id}')">➕</button>
       <button class="btn-icon" title="${c.estado==='activo'?'Finalizar':'Reactivar'}" onclick="toggleContrato('${c.id}')">${c.estado==='activo'?'🔒':'🔓'}</button>
       <button class="btn-icon del" onclick="eliminar('contratos','${c.id}')">🗑️</button>
     </td></tr>`;
   }).join('');
 };
+
+/* ---- ÍTEMS ADICIONALES DEL CONTRATO ---- */
+let _adicId='';
+window.abrirAdic = (id)=>{
+  _adicId=id;
+  const c=contratosCache.find(x=>x.id===id); if(!c) return;
+  $('adic-sub').innerHTML=`<b>${c.propiedadNombre}</b> · ${c.inquilinoNombre}`;
+  $('adic-nombre').value=''; $('adic-monto').value='';
+  renderAdicList();
+  $('modal-adic').classList.add('open');
+};
+window.cerrarAdic = ()=>$('modal-adic').classList.remove('open');
+function renderAdicList(){
+  const c=contratosCache.find(x=>x.id===_adicId);
+  const ad=c?.adicionales||[];
+  const box=$('adic-list');
+  if(!ad.length){ box.innerHTML='<p class="muted" style="font-size:13px">Todavía no hay ítems. Agregá uno abajo (ej: Internet $5000).</p>'; return; }
+  box.innerHTML=ad.map((a,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--panel2);border-radius:9px;margin-bottom:7px">
+    <span><span class="badge badge-blue">${a.nombre}</span> <span class="muted" style="margin-left:6px">sugerido ${fmt(a.monto)}</span></span>
+    <button class="btn-icon del" onclick="quitarAdic(${i})">🗑️</button></div>`).join('');
+}
+window.agregarAdic = async ()=>{
+  if(!reqDb()) return;
+  const nombre=$('adic-nombre').value.trim();
+  if(!nombre){ showAlert('Poné el nombre del ítem'); return; }
+  const c=contratosCache.find(x=>x.id===_adicId); if(!c) return;
+  const ad=[...(c.adicionales||[]), {nombre, monto:+$('adic-monto').value||0}];
+  await updateDoc(doc(db,'contratos',_adicId),{adicionales:ad});
+  c.adicionales=ad;
+  $('adic-nombre').value=''; $('adic-monto').value='';
+  renderAdicList(); renderContratos();
+  showAlert('Ítem agregado');
+};
+window.quitarAdic = async (i)=>{
+  const c=contratosCache.find(x=>x.id===_adicId); if(!c) return;
+  const ad=[...(c.adicionales||[])]; ad.splice(i,1);
+  await updateDoc(doc(db,'contratos',_adicId),{adicionales:ad});
+  c.adicionales=ad;
+  renderAdicList(); renderContratos();
+  showAlert('Ítem quitado');
+};
 window.toggleContrato = async (id)=>{
   const c=contratosCache.find(x=>x.id===id); if(!c) return;
-  const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
   await updateDoc(doc(db,'contratos',id),{estado: c.estado==='activo'?'finalizado':'activo'});
   showAlert('Contrato actualizado'); cargarTodo();
 };
 
 /* ============ COBROS ============ */
+/* ---- PRORRATEO DE GASTOS COMUNES ---- */
+// Unidades ocupadas (contratos activos) en un domicilio
+function unidadesOcupadasEnDomicilio(dom){
+  if(!dom) return 0;
+  const ids = propiedadesCache.filter(p=>(p.direccion||'').trim()===dom.trim()).map(p=>p.id);
+  return contratosCache.filter(c=>c.estado==='activo' && ids.includes(c.propiedadId)).length;
+}
+// Cuota de gastos comunes que le toca a un contrato en un período (YYYY-MM)
+function gastosComunesContrato(contratoId, periodo){
+  const c = contratosCache.find(x=>x.id===contratoId);
+  if(!c || !periodo) return 0;
+  const prop = propiedadesCache.find(p=>p.id===c.propiedadId);
+  const dom = (prop?.direccion||'').trim();
+  if(!dom) return 0;
+  const divisor = unidadesOcupadasEnDomicilio(dom);
+  if(divisor<=0) return 0;
+  const totalDom = gastosCache.filter(g=>g.prorrateado &&
+      (g.domicilio||'').trim()===dom &&
+      (g.fecha||'').slice(0,7)===periodo)
+    .reduce((s,g)=>s+(g.monto||0),0);
+  return Math.round(totalDom/divisor);
+}
+
 window.autoMonto = ()=>{
   const c=contratosCache.find(x=>x.id===$('co-contrato').value);
-  if(c && !$('co-monto').value) $('co-monto').value=c.montoMensual||'';
+  const box=$('co-adic-box');
+  if(!c){ box.innerHTML=''; $('co-desglose').innerHTML=''; return; }
+  const ad=c.adicionales||[];
+  box.innerHTML = ad.length
+    ? `<label style="margin-bottom:8px">Ítems adicionales (poné el monto a cobrar este mes)</label>
+       <div class="grid">`+ad.map((a,i)=>`<div class="field"><label>${a.nombre}</label>
+         <input class="co-adic" data-nombre="${a.nombre}" type="number" value="${a.monto||''}" placeholder="0" oninput="recalcCobro()"></div>`).join('')+`</div>`
+    : '';
+  recalcCobro();
+};
+window.recalcCobro = ()=>{
+  const c=contratosCache.find(x=>x.id===$('co-contrato').value);
+  const periodo=$('co-periodo').value;
+  const des=$('co-desglose');
+  if(!c){ des.innerHTML=''; return; }
+  const alquiler=c.montoMensual||0;
+  const comunes=gastosComunesContrato(c.id, periodo);
+  let adic=0, adicTxt='';
+  document.querySelectorAll('.co-adic').forEach(inp=>{
+    const v=+inp.value||0; adic+=v;
+    if(v>0) adicTxt+=` + ${inp.dataset.nombre} ${fmt(v)}`;
+  });
+  const total=alquiler+comunes+adic;
+  $('co-monto').value=total;
+  const dom=(propiedadesCache.find(p=>p.id===c.propiedadId)?.direccion||'').trim();
+  des.innerHTML = `Alquiler ${fmt(alquiler)}`+
+    (comunes>0?` + Gastos comunes ${fmt(comunes)} <span style="color:var(--text3)">(${unidadesOcupadasEnDomicilio(dom)} unid.)</span>`:'')+
+    adicTxt+
+    ` = <b style="color:var(--accent)">Total ${fmt(total)}</b>`;
 };
 window.guardarCobro = async ()=>{
   if(!reqDb()) return;
@@ -523,14 +774,24 @@ window.guardarCobro = async ()=>{
   if(!contId){ showAlert('Elegí el contrato'); return; }
   if(!$('co-periodo').value){ showAlert('Indicá el período'); return; }
   const c=contratosCache.find(x=>x.id===contId);
+  const periodo=$('co-periodo').value;
+  const montoAlquiler=c.montoMensual||0;
+  const montoGastosComunes=gastosComunesContrato(contId, periodo);
+  const adicionales=[];
+  document.querySelectorAll('.co-adic').forEach(inp=>{
+    const v=+inp.value||0; if(v>0) adicionales.push({nombre:inp.dataset.nombre, monto:v});
+  });
   await addDoc(collection(db,'cobros'),{
     contratoId:contId, propiedadId:c.propiedadId, propiedadNombre:c.propiedadNombre,
     inquilinoId:c.inquilinoId, inquilinoNombre:c.inquilinoNombre,
-    periodo:$('co-periodo').value, monto:+$('co-monto').value||0,
+    periodo, monto:+$('co-monto').value||0,
+    montoAlquiler, montoGastosComunes, adicionales,
+    nro:proximoNro(cobrosCache),
     fechaPago:$('co-fecha').value||hoy(), medio:$('co-medio').value,
     notas:$('co-notas').value.trim(), creado:hoy()
   });
   ['co-monto','co-notas'].forEach(id=>$(id).value='');
+  $('co-adic-box').innerHTML=''; $('co-desglose').innerHTML='';
   showAlert('💰 Cobro registrado'); cargarTodo();
 };
 window.renderCobros = ()=>{
@@ -539,39 +800,110 @@ window.renderCobros = ()=>{
   let rows=[...cobrosCache].sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
   if(fp) rows=rows.filter(c=>c.periodo===fp);
   if(fpr) rows=rows.filter(c=>c.propiedadId===fpr);
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Sin cobros registrados</td></tr>'; return; }
-  tb.innerHTML=rows.map(c=>`<tr>
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="10" class="empty">Sin cobros registrados</td></tr>'; return; }
+  tb.innerHTML=rows.map(c=>{
+    const alq = c.montoAlquiler!=null ? c.montoAlquiler : c.monto;
+    const com = c.montoGastosComunes!=null ? c.montoGastosComunes : 0;
+    const ad = c.adicionales||[];
+    const adTxt = ad.length ? `<div style="font-size:11.5px;color:var(--text3);margin-top:2px">${ad.map(a=>`${a.nombre} ${fmt(a.monto)}`).join(' · ')}</div>` : '';
+    return `<tr>
     <td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
     <td><span class="badge badge-gray">${periodoLargo(c.periodo)}</span></td>
-    <td>${fmt(c.monto)}</td><td class="muted">${fechaCorta(c.fechaPago)}</td><td class="muted">${c.medio||'—'}</td>
-    <td>
+    <td class="muted">${fmt(alq)}</td>
+    <td class="muted">${com?fmt(com):'—'}</td>
+    <td><b>${fmt(c.monto)}</b>${adTxt}</td>
+    <td class="muted">${fechaCorta(c.fechaPago)}</td><td class="muted">${c.medio||'—'}</td>
+    <td style="white-space:nowrap">
       <button class="btn btn-ghost btn-sm" onclick="reciboPDF('${c.id}')">📄 PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="reciboWA('${c.id}')">📱 WA</button>
     </td>
-    <td><button class="btn-icon del" onclick="eliminar('cobros','${c.id}')">🗑️</button></td></tr>`).join('');
+    <td><button class="btn-icon del" onclick="eliminar('cobros','${c.id}')">🗑️</button></td></tr>`;
+  }).join('');
 };
 
+/* ============ DISEÑO PDF (compartido) ============ */
+/* 👇 Cambiá acá el nombre que aparece en el encabezado de todos los PDF */
+const EMPRESA = 'Gestión de Alquileres';
+const PDF_DARK=[29,37,48], PDF_ACCENT=[201,138,58], PDF_SOFT=[247,241,232], PDF_GRAY=[120,130,140];
+
+function pdfHeader(d, titulo, subtitulo){
+  d.setFillColor(...PDF_DARK); d.rect(0,0,210,32,'F');
+  d.setFillColor(...PDF_ACCENT); d.rect(0,32,210,2.2,'F');
+  d.setTextColor(255,255,255); d.setFont('helvetica','bold'); d.setFontSize(15);
+  d.text(EMPRESA, 20, 15);
+  d.setFont('helvetica','normal'); d.setFontSize(9.5); d.setTextColor(190,196,204);
+  d.text(String(titulo).toUpperCase(), 20, 24);
+  if(subtitulo){ d.setFontSize(10); d.setTextColor(255,255,255); d.text(String(subtitulo), 190, 24, {align:'right'}); }
+  d.setTextColor(0,0,0);
+  return 48;
+}
+function pdfFooter(d){
+  d.setDrawColor(225); d.line(20, 279, 190, 279);
+  d.setFontSize(8); d.setTextColor(...PDF_GRAY); d.setFont('helvetica','normal');
+  d.text('Emitido el '+fechaCorta(hoy()), 20, 285);
+  d.text(EMPRESA, 190, 285, {align:'right'});
+  d.setTextColor(0,0,0);
+}
+// fila etiqueta a la izquierda, valor a la derecha
+function pdfRow(d, y, label, value, o={}){
+  d.setFontSize(o.size||11); d.setFont('helvetica', o.bold?'bold':'normal');
+  d.setTextColor(...(o.color||[55,60,68]));
+  d.text(String(label), 20, y);
+  if(value!=null){ d.setTextColor(...(o.vcolor||[20,24,30])); d.text(String(value), 190, y, {align:'right'}); }
+  d.setTextColor(0,0,0);
+  return y+(o.gap||9);
+}
+// caja resaltada para un importe clave
+function pdfBox(d, y, label, value, o={}){
+  const fill=o.fill||PDF_SOFT, h=o.h||18;
+  d.setFillColor(...fill); d.roundedRect(20, y, 170, h, 2.5, 2.5, 'F');
+  d.setTextColor(...(o.lcolor||PDF_DARK)); d.setFont('helvetica','bold'); d.setFontSize(o.ls||12);
+  d.text(String(label), 26, y+h/2+ (o.ls?o.ls/3.2:3.8));
+  d.setFontSize(o.vs||14); d.setTextColor(...(o.vcolor||PDF_ACCENT));
+  d.text(String(value), 184, y+h/2+(o.vs?o.vs/3.2:4.4), {align:'right'});
+  d.setTextColor(0,0,0);
+  return y+h+8;
+}
+// número correlativo (asignado al crear; se completa para registros viejos)
+const nroFmt = n => 'N° ' + String(n||0).padStart(5,'0');
+async function ensureNro(coleccion, item){
+  if(item.nro) return item.nro;
+  const cache = coleccion==='cobros' ? cobrosCache : garantiasCache;
+  const nro = cache.reduce((m,x)=>Math.max(m, x.nro||0), 0) + 1;
+  try{ await updateDoc(doc(db,coleccion,item.id),{nro}); item.nro=nro; }catch(e){}
+  return nro;
+}
+// dirección de una propiedad por id
+const dirDe = pid => { const p=propiedadesCache.find(x=>x.id===pid); return p?.direccion||''; };
+function proximoNro(cache){ return cache.reduce((m,x)=>Math.max(m, x.nro||0), 0) + 1; }
+
 /* ---- RECIBO PDF ---- */
-window.reciboPDF = (id)=>{
+window.reciboPDF = async (id)=>{
   const c=cobrosCache.find(x=>x.id===id); if(!c) return;
+  const nro=await ensureNro('cobros', c);
   const { jsPDF }=window.jspdf; const d=new jsPDF();
-  d.setFontSize(20); d.setFont(undefined,'bold'); d.text('RECIBO DE ALQUILER',105,24,{align:'center'});
-  d.setDrawColor(200); d.line(20,30,190,30);
-  d.setFontSize(11); d.setFont(undefined,'normal');
-  let y=44;
-  const fila=(k,v)=>{ d.setFont(undefined,'bold'); d.text(k,20,y); d.setFont(undefined,'normal'); d.text(String(v),70,y); y+=10; };
-  fila('Fecha de pago:', fechaCorta(c.fechaPago));
-  fila('Período:', periodoLargo(c.periodo));
-  fila('Propiedad:', c.propiedadNombre);
-  fila('Inquilino:', c.inquilinoNombre);
-  fila('Medio de pago:', c.medio||'—');
-  if(c.notas) fila('Observaciones:', c.notas);
-  y+=6; d.setDrawColor(200); d.line(20,y,190,y); y+=14;
-  d.setFontSize(15); d.setFont(undefined,'bold');
-  d.text('Total recibido: '+fmt(c.monto), 20, y);
-  y+=30; d.setFontSize(10); d.setFont(undefined,'normal'); d.setTextColor(120);
-  d.text('Recibí la suma indicada en concepto de alquiler del período detallado.',20,y);
-  y+=24; d.text('______________________________',20,y); y+=8; d.text('Firma y aclaración',20,y);
+  let y=pdfHeader(d, 'Recibo de alquiler', nroFmt(nro));
+  y+=2;
+  y=pdfRow(d,y,'Fecha de pago', fechaCorta(c.fechaPago));
+  y=pdfRow(d,y,'Período', periodoLargo(c.periodo));
+  y=pdfRow(d,y,'Propiedad', c.propiedadNombre);
+  const dir=dirDe(c.propiedadId); if(dir) y=pdfRow(d,y,'Dirección', dir);
+  y=pdfRow(d,y,'Inquilino', c.inquilinoNombre);
+  y=pdfRow(d,y,'Medio de pago', c.medio||'—');
+  if(c.notas) y=pdfRow(d,y,'Observaciones', c.notas);
+  y+=3; d.setDrawColor(220); d.line(20,y,190,y); y+=10;
+  const alq = c.montoAlquiler!=null ? c.montoAlquiler : c.monto;
+  const com = c.montoGastosComunes!=null ? c.montoGastosComunes : 0;
+  y=pdfRow(d,y,'Alquiler', fmt(alq));
+  if(com>0) y=pdfRow(d,y,'Gastos comunes', fmt(com));
+  (c.adicionales||[]).forEach(a=>{ y=pdfRow(d,y,a.nombre, fmt(a.monto)); });
+  y+=2;
+  y=pdfBox(d,y,'TOTAL RECIBIDO', fmt(c.monto), {h:20, ls:12, vs:15});
+  y+=4; d.setFontSize(9.5); d.setFont('helvetica','normal'); d.setTextColor(...PDF_GRAY);
+  d.text('Recibí la suma indicada en concepto de alquiler y gastos del período detallado.',20,y);
+  y+=28; d.setTextColor(0,0,0); d.setDrawColor(150); d.line(20,y,90,y);
+  y+=6; d.setFontSize(9.5); d.text('Firma y aclaración',20,y);
+  pdfFooter(d);
   d.save(`Recibo_${c.propiedadNombre}_${c.periodo}.pdf`);
 };
 /* ---- RECIBO WHATSAPP ---- */
@@ -580,42 +912,486 @@ window.reciboWA = (id)=>{
   const inq=inquilinosCache.find(i=>i.id===c.inquilinoId);
   let tel=(inq?.telefono||'').replace(/\D/g,'');
   if(tel && !tel.startsWith('54')) tel='54'+tel;
+  const alq = c.montoAlquiler!=null ? c.montoAlquiler : c.monto;
+  const com = c.montoGastosComunes!=null ? c.montoGastosComunes : 0;
+  const lineaCom = com>0 ? `Gastos comunes: ${fmt(com)}%0A` : '';
+  const lineaAdic = (c.adicionales||[]).map(a=>`${a.nombre}: ${fmt(a.monto)}%0A`).join('');
   const msg=`*RECIBO DE ALQUILER*%0A%0A`+
     `Propiedad: ${c.propiedadNombre}%0A`+
     `Inquilino: ${c.inquilinoNombre}%0A`+
     `Período: ${periodoLargo(c.periodo)}%0A`+
     `Fecha de pago: ${fechaCorta(c.fechaPago)}%0A`+
-    `Medio: ${c.medio||'-'}%0A`+
+    `Medio: ${c.medio||'-'}%0A%0A`+
+    `Alquiler: ${fmt(alq)}%0A`+
+    lineaCom+
+    lineaAdic+
     `*Total recibido: ${fmt(c.monto)}*%0A%0A`+
     `¡Gracias!`;
   window.open(`https://wa.me/${tel}?text=${msg}`,'_blank');
 };
 
+/* ============ GARANTÍAS ============ */
+const fmtCur = (n,mon)=> (mon==='USD'?'US$':'$') + (Number(n)||0).toLocaleString('es-AR');
+
+window.toggleGaTipo = ()=>{
+  const t=$('ga-tipo').value;
+  document.querySelectorAll('.ga-pd').forEach(e=>e.style.display = t==='conversion'?'none':'');
+  document.querySelectorAll('.ga-conv').forEach(e=>e.style.display = t==='conversion'?'':'none');
+};
+window.autoConvUSD = ()=>{
+  const ars=+$('ga-conv-ars').value||0, cot=+$('ga-conv-cotiz').value||0;
+  if(ars>0 && cot>0) $('ga-conv-usd').value=Math.round((ars/cot)*100)/100;
+};
+
+// Resumen de garantía de un contrato
+function garantiaResumen(contratoId){
+  const movs=garantiasCache.filter(g=>g.contratoId===contratoId);
+  let pagARS=0,pagUSD=0,devARS=0,devUSD=0,convARS=0,convUSD=0;
+  movs.forEach(m=>{
+    if(m.tipo==='pago'){ m.moneda==='USD'?pagUSD+=m.monto||0:pagARS+=m.monto||0; }
+    else if(m.tipo==='devolucion'){ m.moneda==='USD'?devUSD+=m.monto||0:devARS+=m.monto||0; }
+    else if(m.tipo==='conversion'){ convARS+=m.montoARS||0; convUSD+=m.montoUSD||0; }
+  });
+  return {
+    pagARS,pagUSD,devARS,devUSD,
+    tenARS: pagARS-convARS-devARS,
+    tenUSD: pagUSD+convUSD-devUSD
+  };
+}
+
+window.guardarGarantia = async ()=>{
+  if(!reqDb()) return;
+  const contId=$('ga-contrato').value;
+  if(!contId){ showAlert('Elegí el contrato'); return; }
+  const c=contratosCache.find(x=>x.id===contId);
+  const tipo=$('ga-tipo').value;
+  const base={
+    contratoId:contId, propiedadId:c.propiedadId, propiedadNombre:c.propiedadNombre,
+    inquilinoId:c.inquilinoId, inquilinoNombre:c.inquilinoNombre,
+    tipo, fecha:$('ga-fecha').value||hoy(), notas:$('ga-notas').value.trim(), creado:hoy()
+  };
+  let data;
+  if(tipo==='conversion'){
+    const ars=+$('ga-conv-ars').value||0, usd=+$('ga-conv-usd').value||0;
+    if(ars<=0||usd<=0){ showAlert('Completá pesos, cotización y dólares'); return; }
+    data={...base, montoARS:ars, montoUSD:usd, cotizacion:+$('ga-conv-cotiz').value||0};
+  } else {
+    const monto=+$('ga-monto').value||0;
+    if(monto<=0){ showAlert('Ingresá el monto'); return; }
+    data={...base, moneda:$('ga-moneda').value, monto, nro:proximoNro(garantiasCache)};
+  }
+  await addDoc(collection(db,'garantias'), data);
+  ['ga-monto','ga-conv-ars','ga-conv-cotiz','ga-conv-usd','ga-notas'].forEach(id=>$(id).value='');
+  showAlert('🔐 Movimiento registrado'); cargarTodo();
+};
+
+window.renderGarantias = ()=>{
+  // ---- Estado por contrato ----
+  const te=$('tbl-gar-estado');
+  const conts=[...contratosCache].sort((a,b)=>a.propiedadNombre.localeCompare(b.propiedadNombre))
+    .filter(c=> c.deposito>0 || garantiasCache.some(g=>g.contratoId===c.id));
+  if(!conts.length){ te.innerHTML='<tr><td colspan="6" class="empty">Sin garantías cargadas</td></tr>'; }
+  else {
+    let totPagARS=0,totPagUSD=0,totTenARS=0,totTenUSD=0;
+    const filas=conts.map(c=>{
+      const r=garantiaResumen(c.id);
+      const monAc=c.depositoMoneda||'ARS';
+      const acordado=c.deposito||0;
+      const pagEnMon = monAc==='USD'? r.pagUSD : r.pagARS;
+      const pend=Math.max(0, acordado-pagEnMon);
+      totPagARS+=r.pagARS; totPagUSD+=r.pagUSD; totTenARS+=r.tenARS; totTenUSD+=r.tenUSD;
+      const pagadoTxt=[r.pagARS?fmtCur(r.pagARS,'ARS'):null, r.pagUSD?fmtCur(r.pagUSD,'USD'):null].filter(Boolean).join(' + ')||'—';
+      const tenTxt=[r.tenARS?fmtCur(r.tenARS,'ARS'):null, r.tenUSD?fmtCur(r.tenUSD,'USD'):null].filter(Boolean).join(' + ')||'—';
+      const pendBadge = acordado? (pend<=0?'<span class="badge badge-green">Completo</span>':`<span class="badge badge-amber">${fmtCur(pend,monAc)}</span>`) : '—';
+      return `<tr>
+        <td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+        <td>${acordado?fmtCur(acordado,monAc):'—'}</td>
+        <td class="muted">${pagadoTxt}</td>
+        <td>${pendBadge}</td>
+        <td class="muted">${tenTxt}</td></tr>`;
+    }).join('');
+    const totPagTxt=[totPagARS?fmtCur(totPagARS,'ARS'):null, totPagUSD?fmtCur(totPagUSD,'USD'):null].filter(Boolean).join(' + ')||'—';
+    const totTenTxt=[totTenARS?fmtCur(totTenARS,'ARS'):null, totTenUSD?fmtCur(totTenUSD,'USD'):null].filter(Boolean).join(' + ')||'—';
+    const totalRow=`<tr style="border-top:2px solid var(--accent)">
+      <td colspan="3" style="text-align:right"><b>TOTALES</b></td>
+      <td><b>${totPagTxt}</b></td>
+      <td></td>
+      <td><b style="color:var(--accent)">${totTenTxt}</b></td></tr>`;
+    te.innerHTML=filas+totalRow;
+  }
+
+  // ---- Movimientos ----
+  const tm=$('tbl-gar-mov');
+  const fc=$('f-gar-contrato').value;
+  let movs=[...garantiasCache].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  if(fc) movs=movs.filter(m=>m.contratoId===fc);
+  if(!movs.length){ tm.innerHTML='<tr><td colspan="7" class="empty">Sin movimientos</td></tr>'; return; }
+  tm.innerHTML=movs.map(m=>{
+    let tipoBadge, detalle;
+    if(m.tipo==='pago'){ tipoBadge='<span class="badge badge-green">Pago</span>'; detalle=fmtCur(m.monto,m.moneda); }
+    else if(m.tipo==='devolucion'){ tipoBadge='<span class="badge badge-red">Devolución</span>'; detalle=fmtCur(m.monto,m.moneda); }
+    else { tipoBadge='<span class="badge badge-blue">Conversión</span>'; detalle=`${fmtCur(m.montoARS,'ARS')} → ${fmtCur(m.montoUSD,'USD')}${m.cotizacion?` @ ${m.cotizacion}`:''}`; }
+    const comp = m.tipo==='conversion' ? '<span class="muted">—</span>' :
+      `<button class="btn btn-ghost btn-sm" onclick="reciboGar('${m.id}')">📄 PDF</button>
+       <button class="btn btn-ghost btn-sm" onclick="reciboGarWA('${m.id}')">📱 WA</button>`;
+    return `<tr>
+      <td class="muted">${fechaCorta(m.fecha)}</td><td><b>${m.propiedadNombre}</b></td><td>${m.inquilinoNombre}</td>
+      <td>${tipoBadge}</td><td>${detalle}</td>
+      <td style="white-space:nowrap">${comp}</td>
+      <td><button class="btn-icon del" onclick="eliminar('garantias','${m.id}')">🗑️</button></td></tr>`;
+  }).join('');
+};
+
+/* ---- RECIBO / COMPROBANTE DE GARANTÍA (PDF) ---- */
+window.reciboGar = async (id)=>{
+  const m=garantiasCache.find(x=>x.id===id); if(!m||m.tipo==='conversion') return;
+  const esDev = m.tipo==='devolucion';
+  const nro=await ensureNro('garantias', m);
+  const r=garantiaResumen(m.contratoId);
+  const c=contratosCache.find(x=>x.id===m.contratoId);
+  const monAc=c?.depositoMoneda||'ARS'; const acordado=c?.deposito||0;
+  const pagEnMon = monAc==='USD'? r.pagUSD : r.pagARS;
+  const pend=Math.max(0, acordado-pagEnMon);
+  const { jsPDF }=window.jspdf; const d=new jsPDF();
+  let y=pdfHeader(d, esDev?'Comprobante de devolución de depósito':'Recibo de depósito en garantía', nroFmt(nro));
+  y+=2;
+  y=pdfRow(d,y,'Fecha', fechaCorta(m.fecha));
+  y=pdfRow(d,y,'Propiedad', m.propiedadNombre);
+  const dir=dirDe(m.propiedadId); if(dir) y=pdfRow(d,y,'Dirección', dir);
+  y=pdfRow(d,y,'Inquilino', m.inquilinoNombre);
+  if(m.notas) y=pdfRow(d,y,'Observaciones', m.notas);
+  y+=3; d.setDrawColor(220); d.line(20,y,190,y); y+=10;
+  y=pdfBox(d,y, esDev?'MONTO DEVUELTO':'MONTO RECIBIDO', fmtCur(m.monto,m.moneda), {h:20, ls:12, vs:15});
+  if(!esDev && acordado){
+    y+=2; d.setFontSize(9.5); d.setFont('helvetica','normal'); d.setTextColor(...PDF_GRAY);
+    d.text(`Depósito acordado: ${fmtCur(acordado,monAc)}   ·   Pagado: ${fmtCur(pagEnMon,monAc)}   ·   Pendiente: ${fmtCur(pend,monAc)}`,20,y);
+    y+=8; d.setTextColor(0,0,0);
+  }
+  y+=4; d.setFontSize(9.5); d.setFont('helvetica','normal'); d.setTextColor(...PDF_GRAY);
+  d.text(esDev?'Devuelvo el depósito en garantía al finalizar el contrato.'
+              :'Recibí el monto indicado en concepto de depósito en garantía.',20,y);
+  y+=28; d.setTextColor(0,0,0); d.setDrawColor(150); d.line(20,y,90,y);
+  y+=6; d.setFontSize(9.5); d.text('Firma y aclaración',20,y);
+  pdfFooter(d);
+  d.save(`${esDev?'Devolucion':'Recibo_deposito'}_${m.propiedadNombre}_${m.fecha}.pdf`);
+};
+/* ---- RECIBO / COMPROBANTE DE GARANTÍA (WhatsApp) ---- */
+window.reciboGarWA = (id)=>{
+  const m=garantiasCache.find(x=>x.id===id); if(!m||m.tipo==='conversion') return;
+  const esDev=m.tipo==='devolucion';
+  const inq=inquilinosCache.find(i=>i.id===m.inquilinoId);
+  let tel=(inq?.telefono||'').replace(/\D/g,'');
+  if(tel && !tel.startsWith('54')) tel='54'+tel;
+  const c=contratosCache.find(x=>x.id===m.contratoId);
+  const monAc=c?.depositoMoneda||'ARS'; const acordado=c?.deposito||0;
+  const r=garantiaResumen(m.contratoId);
+  const pagEnMon = monAc==='USD'? r.pagUSD : r.pagARS;
+  const pend=Math.max(0, acordado-pagEnMon);
+  const titulo=esDev?'*COMPROBANTE DE DEVOLUCIÓN DE DEPÓSITO*':'*RECIBO DE DEPÓSITO EN GARANTÍA*';
+  let msg=`${titulo}%0A%0A`+
+    `Propiedad: ${m.propiedadNombre}%0A`+
+    `Inquilino: ${m.inquilinoNombre}%0A`+
+    `Fecha: ${fechaCorta(m.fecha)}%0A%0A`+
+    `*${esDev?'Monto devuelto':'Monto recibido'}: ${fmtCur(m.monto,m.moneda)}*%0A`;
+  if(!esDev && acordado) msg+=`Acordado: ${fmtCur(acordado,monAc)} · Pagado: ${fmtCur(pagEnMon,monAc)} · Pendiente: ${fmtCur(pend,monAc)}%0A`;
+  msg+=`%0A¡Gracias!`;
+  window.open(`https://wa.me/${tel}?text=${msg}`,'_blank');
+};
+
+/* ============ AJUSTES ============ */
+function addMonths(dateStr, n){
+  const d=new Date(dateStr+'T00:00:00'); d.setMonth(d.getMonth()+n); return d;
+}
+// Fecha del próximo ajuste de un contrato (Date) o null si no corresponde
+function proximoAjuste(c){
+  if(!c.ajusteMeses || !c.fechaInicio) return null;
+  const n=(c.ajustes||[]).length;
+  const prox=addMonths(c.fechaInicio,(n+1)*c.ajusteMeses);
+  if(c.fechaFin){ const fin=new Date(c.fechaFin+'T00:00:00'); if(prox>fin) return null; }
+  return prox;
+}
+const toISO = d => d.toISOString().slice(0,10);
+
+window.ajInfo = ()=>{
+  const c=contratosCache.find(x=>x.id===$('aj-contrato').value);
+  const info=$('aj-info');
+  $('aj-pct').value=''; $('aj-nuevo').value='';
+  if(!c){ info.innerHTML=''; return; }
+  const prox=proximoAjuste(c);
+  if(prox) $('aj-fecha').value=toISO(prox); else $('aj-fecha').value=hoy();
+  info.innerHTML=`Monto actual: <b>${fmt(c.montoMensual)}</b> · Frecuencia: ${c.ajusteMeses?c.ajusteMeses+' meses':'sin ajuste'}`+
+    (prox?` · Próximo según contrato: <b>${fechaCorta(toISO(prox))}</b>`:'');
+};
+window.ajDesdePct = ()=>{
+  const c=contratosCache.find(x=>x.id===$('aj-contrato').value); if(!c) return;
+  const pct=+$('aj-pct').value||0;
+  if(c.montoMensual) $('aj-nuevo').value=Math.round(c.montoMensual*(1+pct/100));
+};
+window.ajDesdeMonto = ()=>{
+  const c=contratosCache.find(x=>x.id===$('aj-contrato').value); if(!c||!c.montoMensual) return;
+  const nuevo=+$('aj-nuevo').value||0;
+  if(nuevo>0) $('aj-pct').value=Math.round((nuevo/c.montoMensual-1)*1000)/10;
+};
+window.guardarAjuste = async ()=>{
+  if(!reqDb()) return;
+  const contId=$('aj-contrato').value;
+  if(!contId){ showAlert('Elegí el contrato'); return; }
+  const nuevo=+$('aj-nuevo').value||0;
+  if(nuevo<=0){ showAlert('Ingresá el nuevo monto'); return; }
+  const c=contratosCache.find(x=>x.id===contId);
+  const montoAnterior=c.montoMensual||0;
+  const pct = montoAnterior? Math.round((nuevo/montoAnterior-1)*1000)/10 : 0;
+  const ajustes=[...(c.ajustes||[]), {fecha:$('aj-fecha').value||hoy(), montoAnterior, montoNuevo:nuevo, porcentaje:pct}];
+  await updateDoc(doc(db,'contratos',contId),{montoMensual:nuevo, ajustes});
+  $('aj-pct').value=''; $('aj-nuevo').value=''; $('aj-info').innerHTML='';
+  showAlert('📈 Ajuste registrado'); cargarTodo();
+};
+
+window.renderAjustes = ()=>{
+  // próximos
+  const tp=$('tbl-aj-prox');
+  const hoyD=new Date(); hoyD.setHours(0,0,0,0);
+  const prox=contratosCache.filter(c=>c.estado==='activo')
+    .map(c=>({c, prox:proximoAjuste(c)}))
+    .filter(x=>x.prox)
+    .sort((a,b)=>a.prox-b.prox);
+  if(!prox.length){ tp.innerHTML='<tr><td colspan="7" class="empty">Sin ajustes pendientes</td></tr>'; }
+  else tp.innerHTML=prox.map(({c,prox})=>{
+    const dias=Math.ceil((prox-hoyD)/86400000);
+    const badge = dias<0?`<span class="badge badge-red">Vencido</span>`
+      : dias<=30?`<span class="badge badge-amber">${dias} días</span>`
+      : `<span class="badge badge-gray">${dias} días</span>`;
+    return `<tr><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+      <td>${fmt(c.montoMensual)}</td><td class="muted">${c.ajusteMeses} meses</td>
+      <td class="muted">${fechaCorta(toISO(prox))}</td><td>${badge}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="avisarProximoWA('${c.id}')">📱 Avisar</button></td></tr>`;
+  }).join('');
+
+  // historial
+  const th=$('tbl-aj-hist');
+  const hist=[];
+  contratosCache.forEach(c=>(c.ajustes||[]).forEach((a,idx)=>hist.push({c,a,idx})));
+  hist.sort((x,y)=>(y.a.fecha||'').localeCompare(x.a.fecha||''));
+  if(!hist.length){ th.innerHTML='<tr><td colspan="7" class="empty">Sin ajustes registrados</td></tr>'; return; }
+  th.innerHTML=hist.map(({c,a,idx})=>`<tr>
+    <td class="muted">${fechaCorta(a.fecha)}</td><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+    <td class="muted">${fmt(a.montoAnterior)}</td><td><b>${fmt(a.montoNuevo)}</b></td>
+    <td><span class="badge badge-blue">+${a.porcentaje}%</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="avisarAjusteWA('${c.id}',${idx})">📱 WA</button></td></tr>`).join('');
+};
+
+// dashboard: ajustes próximos a 60 días
+function renderDashAjustes(){
+  const tb=$('dash-ajustes'); if(!tb) return;
+  const hoyD=new Date(); hoyD.setHours(0,0,0,0);
+  const lim=new Date(); lim.setDate(lim.getDate()+60);
+  const prox=contratosCache.filter(c=>c.estado==='activo')
+    .map(c=>({c, prox:proximoAjuste(c)}))
+    .filter(x=>x.prox && x.prox<=lim)
+    .sort((a,b)=>a.prox-b.prox);
+  if(!prox.length){ tb.innerHTML='<tr><td colspan="5" class="empty">Ningún ajuste en los próximos 60 días</td></tr>'; return; }
+  tb.innerHTML=prox.map(({c,prox})=>{
+    const dias=Math.ceil((prox-hoyD)/86400000);
+    return `<tr><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+      <td>${fmt(c.montoMensual)}</td><td class="muted">${fechaCorta(toISO(prox))}</td>
+      <td><span class="badge ${dias<0?'badge-red':dias<=30?'badge-amber':'badge-gray'}">${dias<0?'Vencido':dias+' días'}</span></td></tr>`;
+  }).join('');
+}
+
+window.avisarProximoWA = (contratoId)=>{
+  const c=contratosCache.find(x=>x.id===contratoId); if(!c) return;
+  const prox=proximoAjuste(c); if(!prox){ showAlert('Sin ajuste pendiente'); return; }
+  const inq=inquilinosCache.find(i=>i.id===c.inquilinoId);
+  let tel=(inq?.telefono||'').replace(/\D/g,''); if(tel&&!tel.startsWith('54')) tel='54'+tel;
+  const msg=`Hola ${c.inquilinoNombre}, te recordamos que el *${fechaCorta(toISO(prox))}* corresponde el ajuste del alquiler de *${c.propiedadNombre}* según contrato. Te enviaremos el nuevo valor. ¡Gracias!`;
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+};
+window.avisarAjusteWA = (contratoId, idx)=>{
+  const c=contratosCache.find(x=>x.id===contratoId); if(!c) return;
+  const a=(c.ajustes||[])[idx]; if(!a) return;
+  const inq=inquilinosCache.find(i=>i.id===c.inquilinoId);
+  let tel=(inq?.telefono||'').replace(/\D/g,''); if(tel&&!tel.startsWith('54')) tel='54'+tel;
+  const msg=`Hola ${c.inquilinoNombre}, te informamos que el alquiler de *${c.propiedadNombre}* se ajusta a *${fmt(a.montoNuevo)}* a partir del *${fechaCorta(a.fecha)}* (anterior ${fmt(a.montoAnterior)}, +${a.porcentaje}%). ¡Gracias!`;
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+};
+
 /* ============ GASTOS ============ */
+window.toggleDomicilio = ()=>{
+  $('g-dom-field').style.display = $('g-prorrateado').value==='si' ? '' : 'none';
+};
 window.guardarGasto = async ()=>{
   if(!reqDb()) return;
+  if(!$('g-item').value.trim()){ showAlert('Ingresá el ítem'); return; }
   if(!$('g-monto').value){ showAlert('Ingresá el monto'); return; }
-  const prop=propiedadesCache.find(p=>p.id===$('g-prop').value);
+  const prorr = $('g-prorrateado').value==='si';
+  const dom = prorr ? $('g-domicilio').value : '';
+  if(prorr && !dom){ showAlert('Elegí el domicilio a prorratear'); return; }
   await addDoc(collection(db,'gastos'),{
-    propiedadId:$('g-prop').value, propiedadNombre:prop?.nombre||'General',
-    tipo:$('g-tipo').value, descripcion:$('g-desc').value.trim(),
-    monto:+$('g-monto').value||0, fecha:$('g-fecha').value||hoy(), creado:hoy()
+    fecha:$('g-fecha').value||hoy(), item:$('g-item').value.trim(),
+    monto:+$('g-monto').value||0, prorrateado:prorr, domicilio:dom, creado:hoy()
   });
-  ['g-desc','g-monto'].forEach(id=>$(id).value='');
+  ['g-item','g-monto'].forEach(id=>$(id).value='');
+  $('g-prorrateado').value='no'; toggleDomicilio();
   showAlert('🧾 Gasto registrado'); cargarTodo();
 };
 window.renderGastos = ()=>{
   const tb=$('tbl-gastos');
-  const fp=$('f-gasto-periodo').value, fpr=$('f-gasto-prop').value;
+  const fp=$('f-gasto-periodo').value, fdom=$('f-gasto-dom').value;
   let rows=[...gastosCache].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(fp) rows=rows.filter(g=>(g.fecha||'').slice(0,7)===fp);
-  if(fpr) rows=rows.filter(g=>g.propiedadId===fpr);
+  if(fdom) rows=rows.filter(g=>(g.domicilio||'').trim()===fdom);
   if(!rows.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Sin gastos registrados</td></tr>'; return; }
-  tb.innerHTML=rows.map(g=>`<tr>
-    <td class="muted">${fechaCorta(g.fecha)}</td><td><b>${g.propiedadNombre}</b></td>
-    <td><span class="badge badge-amber">${g.tipo}</span></td><td class="muted">${g.descripcion||'—'}</td>
+  const total=rows.reduce((s,g)=>s+(g.monto||0),0);
+  tb.innerHTML=rows.map(g=>{
+    const item = g.item || g.descripcion || g.tipo || '—';
+    return `<tr>
+    <td class="muted">${fechaCorta(g.fecha)}</td><td><b>${item}</b></td>
     <td>${fmt(g.monto)}</td>
-    <td><button class="btn-icon del" onclick="eliminar('gastos','${g.id}')">🗑️</button></td></tr>`).join('');
+    <td>${g.prorrateado?'<span class="badge badge-blue">Sí</span>':'<span class="badge badge-gray">No</span>'}</td>
+    <td class="muted">${g.prorrateado?(g.domicilio||'—'):'—'}</td>
+    <td><button class="btn-icon del" onclick="eliminar('gastos','${g.id}')">🗑️</button></td></tr>`;
+  }).join('') + `<tr style="border-top:2px solid var(--accent)">
+    <td colspan="2" style="text-align:right"><b>TOTAL</b></td>
+    <td><b style="color:var(--accent)">${fmt(total)}</b></td><td colspan="3"></td></tr>`;
+};
+
+/* ---- EXTRACTO PDF DE GASTOS PRORRATEADOS ---- */
+window.extractoProrrateados = ()=>{
+  const periodo = $('f-gasto-periodo').value || mesActual();
+  const domFiltro = $('f-gasto-dom').value;
+  // gastos prorrateados del período
+  let movs = gastosCache.filter(g=>g.prorrateado && (g.fecha||'').slice(0,7)===periodo);
+  if(domFiltro) movs = movs.filter(g=>(g.domicilio||'').trim()===domFiltro);
+  if(!movs.length){ showAlert('No hay gastos prorrateados en ese período/domicilio'); return; }
+
+  // agrupar por domicilio
+  const porDom={};
+  movs.forEach(g=>{ const d=(g.domicilio||'').trim(); (porDom[d]=porDom[d]||[]).push(g); });
+
+  const { jsPDF }=window.jspdf; const d=new jsPDF();
+  const M=20, R=190;
+  let y=pdfHeader(d, 'Extracto de gastos comunes', periodoLargo(periodo));
+  const check=(h)=>{ if(y+h>270){ d.addPage(); y=24; } };
+  y+=2;
+
+  Object.keys(porDom).sort().forEach(dom=>{
+    const gastos=porDom[dom].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+    const totalDom=gastos.reduce((s,g)=>s+(g.monto||0),0);
+    const unidades=propiedadesCache.filter(p=>(p.direccion||'').trim()===dom);
+    const ocupados=contratosCache.filter(c=>c.estado==='activo' && unidades.some(p=>p.id===c.propiedadId));
+    const divisor=ocupados.length;
+    const cuota = divisor>0 ? Math.round(totalDom/divisor) : 0;
+
+    check(46);
+    // barra de domicilio
+    d.setFillColor(...PDF_DARK); d.roundedRect(M, y, R-M, 9, 1.5,1.5,'F');
+    d.setTextColor(255,255,255); d.setFont('helvetica','bold'); d.setFontSize(11);
+    d.text(dom||'(sin domicilio)', M+4, y+6.2); d.setTextColor(0,0,0); y+=15;
+
+    // encabezado de detalle
+    d.setFontSize(9.5); d.setFont('helvetica','bold'); d.setTextColor(...PDF_GRAY);
+    d.text('FECHA', M, y); d.text('ÍTEM', M+30, y); d.text('MONTO', R, y, {align:'right'}); y+=2.5;
+    d.setDrawColor(225); d.line(M,y,R,y); y+=6;
+    d.setFont('helvetica','normal'); d.setTextColor(30,34,40);
+    gastos.forEach(g=>{
+      check(8);
+      d.text(fechaCorta(g.fecha), M, y);
+      d.text(String(g.item||g.descripcion||'—').slice(0,55), M+30, y);
+      d.text(fmt(g.monto), R, y, {align:'right'}); y+=6.5;
+    });
+    y+=1; d.setDrawColor(200); d.line(M,y,R,y); y+=8;
+    d.setFont('helvetica','normal'); d.setTextColor(55,60,68);
+    d.text('Total gastos comunes', M, y); d.setTextColor(20,24,30); d.text(fmt(totalDom), R, y, {align:'right'}); y+=7;
+    d.setTextColor(...PDF_GRAY); d.text(`Unidades ocupadas: ${divisor}`, M, y); y+=9;
+    d.setTextColor(0,0,0);
+    // caja monto por unidad
+    check(22);
+    y=pdfBox(d,y,'MONTO POR UNIDAD', fmt(cuota), {h:18, ls:12, vs:14});
+    y+=6;
+  });
+
+  pdfFooter(d);
+  const nombre = domFiltro ? domFiltro.replace(/[^\w]+/g,'_') : 'todos';
+  d.save(`Extracto_gastos_${nombre}_${periodo}.pdf`);
+};
+
+/* ============ LIQUIDACIÓN ============ */
+function calcLiquidacion(mes, adminPct, partes){
+  const cobrado = cobrosCache.filter(c=>c.periodo===mes)
+    .reduce((s,c)=>s+(c.monto||0),0);
+  const gastos = gastosCache.filter(g=>(g.fecha||'').slice(0,7)===mes)
+    .reduce((s,g)=>s+(g.monto||0),0);
+  const administracion = Math.round(cobrado*(adminPct/100));
+  const neto = cobrado - gastos - administracion;
+  const porParte = partes>0 ? Math.round(neto/partes) : 0;
+  return {mes, cobrado, gastos, adminPct, administracion, neto, partes, porParte};
+}
+function liqActual(){
+  const mes=$('liq-mes').value || mesActual();
+  const adminPct=+$('liq-admin').value||0;
+  const partes=+$('liq-partes').value||4;
+  return calcLiquidacion(mes, adminPct, partes);
+}
+window.renderLiqCalc = ()=>{
+  const r=liqActual();
+  const linea=(k,v,cls='')=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+    <span class="${cls}">${k}</span><span class="${cls}"><b>${v}</b></span></div>`;
+  $('liq-calc').innerHTML=`
+    ${linea('Total cobrado en el mes', fmt(r.cobrado))}
+    ${linea('− Gastos del mes', '−'+fmt(r.gastos),'muted')}
+    ${linea(`− Administración (${r.adminPct}% s/ total cobrado)`, '−'+fmt(r.administracion),'muted')}
+    <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:2px solid var(--accent)">
+      <span style="font-weight:700;font-size:16px">Neto a distribuir</span>
+      <span style="font-weight:800;font-size:16px;color:var(--accent)">${fmt(r.neto)}</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0">
+      <span style="font-weight:700">Cada parte (÷${r.partes})</span>
+      <span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;color:${r.porParte<0?'var(--red)':'var(--green)'}">${fmt(r.porParte)}</span></div>`;
+};
+window.guardarLiquidacion = async ()=>{
+  if(!reqDb()) return;
+  const r=liqActual();
+  if(!r.mes){ showAlert('Elegí el mes'); return; }
+  const existe=liquidacionesCache.find(l=>l.periodo===r.mes);
+  if(existe){
+    await updateDoc(doc(db,'liquidaciones',existe.id),{...r, periodo:r.mes, fecha:hoy()});
+    showAlert('💵 Liquidación actualizada');
+  } else {
+    await addDoc(collection(db,'liquidaciones'),{...r, periodo:r.mes, fecha:hoy(), creado:hoy()});
+    showAlert('💵 Liquidación guardada');
+  }
+  cargarTodo();
+};
+window.renderLiquidaciones = ()=>{
+  const tb=$('tbl-liq');
+  const rows=[...liquidacionesCache].sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Sin liquidaciones guardadas</td></tr>'; return; }
+  tb.innerHTML=rows.map(l=>`<tr>
+    <td><span class="badge badge-gray">${periodoLargo(l.periodo)}</span></td>
+    <td>${fmt(l.cobrado!=null?l.cobrado:l.alquileres)}</td><td class="muted">−${fmt(l.gastos)}</td>
+    <td class="muted">${l.adminPct||0}% · −${fmt(l.administracion)}</td>
+    <td><b>${fmt(l.neto)}</b></td>
+    <td><b style="color:var(--green)">${fmt(l.porParte)}</b> <span class="muted">×${l.partes}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="liquidacionPDF('${l.id}')">📄 PDF</button></td>
+    <td><button class="btn-icon del" onclick="eliminar('liquidaciones','${l.id}')">🗑️</button></td></tr>`).join('');
+};
+window.liquidacionPDF = (id)=>{
+  const r = id==='calc' ? liqActual() : liquidacionesCache.find(l=>l.id===id);
+  if(!r || !r.mes && !r.periodo){ showAlert('Nada para exportar'); return; }
+  const mes=r.mes||r.periodo;
+  const { jsPDF }=window.jspdf; const d=new jsPDF();
+  const M=20, R=190;
+  let y=pdfHeader(d, 'Liquidación mensual', periodoLargo(mes));
+  y+=4;
+  y=pdfRow(d,y,'Total cobrado en el mes', fmt(r.cobrado!=null?r.cobrado:r.alquileres), {bold:true, gap:11});
+  y=pdfRow(d,y,'Gastos del mes', '− '+fmt(r.gastos), {gap:11});
+  y=pdfRow(d,y,`Administración (${r.adminPct||0}% s/ total cobrado)`, '− '+fmt(r.administracion), {gap:13});
+  y=pdfBox(d,y,'NETO A DISTRIBUIR', fmt(r.neto), {h:20, ls:12, vs:15});
+  y+=4;
+  y=pdfBox(d,y,`CADA PARTE  (÷ ${r.partes})`, fmt(r.porParte), {h:24, ls:13, vs:18, fill:PDF_DARK, lcolor:[255,255,255], vcolor:[230,180,110]});
+  y+=6; d.setFontSize(9.5); d.setFont('helvetica','normal'); d.setTextColor(...PDF_GRAY);
+  d.text('Liquidación generada para distribución entre las partes.', M, y);
+  pdfFooter(d);
+  d.save(`Liquidacion_${mes}.pdf`);
 };
 
 /* ============ DASHBOARD ============ */
@@ -628,11 +1404,16 @@ function renderDashboard(){
   const gastosMes=gastosCache.filter(g=>(g.fecha||'').slice(0,7)===mes).reduce((s,g)=>s+(g.monto||0),0);
   const rentaPotencial=contratosCache.filter(c=>c.estado==='activo').reduce((s,c)=>s+(c.montoMensual||0),0);
 
+  // garantías atesoradas (suma de tenencias de todos los contratos)
+  let garARS=0, garUSD=0;
+  contratosCache.forEach(c=>{ const r=garantiaResumen(c.id); garARS+=r.tenARS; garUSD+=r.tenUSD; });
+
   $('dash-stats').innerHTML=`
     <div class="stat blue"><div class="label">Propiedades</div><div class="value">${total}</div><div class="sub">${ocup} ocupadas · ${libres} libres</div></div>
     <div class="stat green"><div class="label">Cobrado este mes</div><div class="value">${fmt(ingresosMes)}</div><div class="sub">${periodoLargo(mes)}</div></div>
     <div class="stat amber"><div class="label">Renta potencial/mes</div><div class="value">${fmt(rentaPotencial)}</div><div class="sub">contratos activos</div></div>
-    <div class="stat red"><div class="label">Gastos este mes</div><div class="value">${fmt(gastosMes)}</div><div class="sub">balance ${fmt(ingresosMes-gastosMes)}</div></div>`;
+    <div class="stat red"><div class="label">Gastos este mes</div><div class="value">${fmt(gastosMes)}</div><div class="sub">balance ${fmt(ingresosMes-gastosMes)}</div></div>
+    <div class="stat"><div class="label">🔐 En garantía</div><div class="value">${fmt(garARS)}</div><div class="sub">+ US$ ${garUSD.toLocaleString('es-AR')} atesorados</div></div>`;
 
   // cobros del mes: contratos activos cruzados con cobros del período
   const activos=contratosCache.filter(c=>c.estado==='activo');
@@ -640,8 +1421,10 @@ function renderDashboard(){
   if(!activos.length){ tbody.innerHTML='<tr><td colspan="5" class="empty">Sin contratos activos</td></tr>'; }
   else tbody.innerHTML=activos.map(c=>{
     const pagado=cobrosCache.find(x=>x.contratoId===c.id && x.periodo===mes);
+    const comunes=gastosComunesContrato(c.id, mes);
+    const esperado=(c.montoMensual||0)+comunes;
     return `<tr><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
-      <td class="muted">${periodoLargo(mes)}</td><td>${fmt(c.montoMensual)}</td>
+      <td class="muted">${periodoLargo(mes)}</td><td>${fmt(esperado)}${comunes?` <span style="color:var(--text3);font-size:12px">(+${fmt(comunes)} com.)</span>`:''}</td>
       <td>${pagado?'<span class="badge badge-green">Cobrado</span>':'<span class="badge badge-red">Pendiente</span>'}</td></tr>`;
   }).join('');
 
@@ -668,17 +1451,32 @@ function llenarSelects(){
   const optsI=inqs.map(i=>`<option value="${i.id}">${i.nombre}</option>`).join('');
   if($('c-prop')) $('c-prop').innerHTML='<option value="">Elegir…</option>'+optsP;
   if($('c-inq'))  $('c-inq').innerHTML='<option value="">Elegir…</option>'+optsI;
-  if($('g-prop')) $('g-prop').innerHTML='<option value="">General (sin propiedad)</option>'+optsP;
+
+  // Domicilios únicos (direcciones de propiedades) para prorrateo
+  const domicilios=[...new Set(propiedadesCache.map(p=>(p.direccion||'').trim()).filter(Boolean))].sort();
+  const optsDom=domicilios.map(d=>{
+    const n=unidadesOcupadasEnDomicilio(d);
+    return `<option value="${d}">${d}${n?` (${n} ocup.)`:''}</option>`;
+  }).join('');
+  if($('g-domicilio')) $('g-domicilio').innerHTML='<option value="">Elegir domicilio…</option>'+optsDom;
+  if($('f-gasto-dom')) $('f-gasto-dom').innerHTML='<option value="">Todos los domicilios</option>'+
+    domicilios.map(d=>`<option value="${d}">${d}</option>`).join('');
 
   const conts=[...contratosCache].filter(c=>c.estado==='activo')
     .sort((a,b)=>a.propiedadNombre.localeCompare(b.propiedadNombre));
   if($('co-contrato')) $('co-contrato').innerHTML='<option value="">Elegir contrato…</option>'+
     conts.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}</option>`).join('');
+  if($('aj-contrato')) $('aj-contrato').innerHTML='<option value="">Elegir contrato…</option>'+
+    conts.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}</option>`).join('');
 
-  // filtros por propiedad
-  const filtP='<option value="">Todas las propiedades</option>'+optsP;
-  if($('f-cobro-prop')) $('f-cobro-prop').innerHTML=filtP;
-  if($('f-gasto-prop')) $('f-gasto-prop').innerHTML=filtP;
+  // filtro por propiedad en cobros
+  if($('f-cobro-prop')) $('f-cobro-prop').innerHTML='<option value="">Todas las propiedades</option>'+optsP;
+
+  // contratos para garantías (incluye finalizados, para devoluciones)
+  const todosCont=[...contratosCache].sort((a,b)=>a.propiedadNombre.localeCompare(b.propiedadNombre));
+  const optsContTodos=todosCont.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}${c.estado!=='activo'?' (finalizado)':''}</option>`).join('');
+  if($('ga-contrato')) $('ga-contrato').innerHTML='<option value="">Elegir contrato…</option>'+optsContTodos;
+  if($('f-gar-contrato')) $('f-gar-contrato').innerHTML='<option value="">Todos los contratos</option>'+optsContTodos;
 }
 
 /* ============ ELIMINAR ============ */
@@ -694,6 +1492,10 @@ window.cerrarModal=()=>$('modal-del').classList.remove('open');
 $('co-periodo').value=mesActual();
 $('co-fecha').value=hoy();
 $('g-fecha').value=hoy();
+$('ga-fecha').value=hoy();
+$('aj-fecha').value=hoy();
+$('liq-mes').value=mesActual();
+renderLiqCalc();
 
 /* INIT */
 cargarTodo();
