@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Alquileres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f1419; --panel:#171e26; --panel2:#1d2530; --line:#2a3441;
+  --text:#e8edf2; --text2:#8a97a6; --text3:#5d6b7a;
+  --accent:#e0a458; --accent-d:#c98a3a;
+  --green:#3ecf8e; --green-bg:rgba(62,207,142,.12);
+  --amber:#e0a458; --amber-bg:rgba(224,164,88,.12);
+  --red:#f06d6d; --red-bg:rgba(240,109,109,.12);
+  --blue:#5b9bd5; --blue-bg:rgba(91,155,213,.12);
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);
+  background-image:radial-gradient(circle at 12% 8%,rgba(224,164,88,.06),transparent 40%),radial-gradient(circle at 88% 92%,rgba(91,155,213,.05),transparent 45%);
+  min-height:100vh;font-size:14px;line-height:1.5}
+h1,h2,h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;letter-spacing:-.02em}
+
+/* HEADER */
+header{padding:22px 26px 0;max-width:1280px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:13px;margin-bottom:4px}
+.logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-d));
+  display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 6px 18px rgba(224,164,88,.25)}
+.brand h1{font-size:25px}
+.brand p{color:var(--text2);font-size:13px}
+
+/* TABS */
+nav{display:flex;gap:4px;margin:20px auto 0;max-width:1280px;padding:0 26px;flex-wrap:wrap}
+.tab{padding:11px 18px;border-radius:11px 11px 0 0;background:transparent;border:none;color:var(--text2);
+  font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:7px}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--panel);color:var(--accent)}
+
+/* MAIN */
+main{max-width:1280px;margin:0 auto;padding:0 26px 60px}
+.view{display:none;animation:fade .35s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.panel-head h2{font-size:18px}
+.panel-head h3{font-size:15px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+.stat::after{content:'';position:absolute;top:0;right:0;width:70px;height:70px;border-radius:50%;background:var(--accent);opacity:.05;transform:translate(20px,-20px)}
+.stat .label{color:var(--text2);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.stat .value{font-family:'Bricolage Grotesque';font-size:28px;font-weight:800;margin-top:6px}
+.stat .sub{color:var(--text3,#5d6b7a);font-size:12px;margin-top:2px}
+.stat.green .value{color:var(--green)} .stat.amber .value{color:var(--amber)}
+.stat.red .value{color:var(--red)} .stat.blue .value{color:var(--blue)}
+
+/* FORMS */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px}
+input,select,textarea{width:100%;padding:11px 13px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);background:#222b37}
+textarea{resize:vertical;min-height:64px}
+.field{margin-bottom:0}
+
+/* BUTTONS */
+.btn{padding:11px 20px;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;
+  cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-d));color:#1a1209}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(224,164,88,.3)}
+.btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:7px 12px;font-size:12px;font-weight:600}
+.btn-icon{background:transparent;border:none;cursor:pointer;color:var(--text2);padding:6px;border-radius:7px;transition:.15s;font-size:15px}
+.btn-icon:hover{background:var(--panel2);color:var(--text)}
+.btn-icon.del:hover{color:var(--red)}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:13px 15px;background:var(--panel2);color:var(--text2);font-weight:600;
+  font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{padding:13px 15px;border-top:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.015)}
+.muted{color:var(--text2)}
+.empty{text-align:center;color:var(--text2);padding:34px}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-blue{background:var(--blue-bg);color:var(--blue)}
+.badge-gray{background:var(--panel2);color:var(--text2)}
+
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal.open{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;
+  max-width:440px;width:100%;animation:pop .25s ease}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-box h3{font-size:18px;margin-bottom:8px}
+.modal-box p{color:var(--text2);margin-bottom:20px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* ALERT */
+.alert{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);
+  background:var(--panel);border:1px solid var(--accent);color:var(--text);padding:14px 24px;
+  border-radius:12px;font-weight:600;box-shadow:0 12px 30px rgba(0,0,0,.4);z-index:200;transition:.4s cubic-bezier(.2,.8,.2,1)}
+.alert.show{transform:translateX(-50%) translateY(0)}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.filters select,.filters input{max-width:200px}
+.section-title{font-family:'Bricolage Grotesque';font-size:15px;font-weight:700;margin:24px 0 12px;color:var(--accent)}
+.loading{text-align:center;padding:40px;color:var(--text2)}
+.cfg-warn{background:var(--red-bg);border:1px solid var(--red);color:var(--text);padding:14px 18px;
+  border-radius:12px;margin:16px 26px;max-width:1280px;font-size:13px}
+.cfg-warn b{color:var(--red)}
+@media(max-width:600px){.brand h1{font-size:21px}.stat .value{font-size:24px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🏠</div>
+    <div>
+      <h1>Gestión de Alquileres</h1>
+      <p>Inmuebles · Contratos · Cobros · Gastos</p>
+    </div>
+  </div>
+</header>
+
+<div id="cfg-warn" class="cfg-warn" style="display:none">
+  <b>⚠️ Falta configurar Firebase.</b> Abrí el archivo y pegá tu configuración de Firebase en el bloque <code>firebaseConfig</code> (líneas marcadas). Sin eso la app no guarda datos.
+</div>
+
+<nav>
+  <button class="tab active" data-view="dashboard">📊 Dashboard</button>
+  <button class="tab" data-view="propiedades">🏢 Propiedades</button>
+  <button class="tab" data-view="inquilinos">👥 Inquilinos</button>
+  <button class="tab" data-view="contratos">📄 Contratos</button>
+  <button class="tab" data-view="cobros">💰 Cobros</button>
+  <button class="tab" data-view="gastos">🧾 Gastos</button>
+</nav>
+
+<main>
+
+<!-- ============ DASHBOARD ============ -->
+<section id="dashboard" class="view active">
+  <div class="stats" id="dash-stats"></div>
+  <div class="panel">
+    <div class="panel-head"><h2>🔔 Cobros del mes en curso</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Período</th><th>Monto</th><th>Estado</th></tr></thead>
+        <tbody id="dash-cobros"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>📅 Contratos próximos a vencer (90 días)</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Vence</th><th>Días</th></tr></thead>
+        <tbody id="dash-vencer"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROPIEDADES ============ -->
+<section id="propiedades" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Nueva propiedad</h2></div>
+    <div class="grid">
+      <div class="field"><label>Identificación / Nombre *</label><input id="p-nombre" placeholder="Ej: Depto Belgrano 2B"></div>
+      <div class="field"><label>Tipo</label>
+        <select id="p-tipo"><option>Departamento</option><option>Casa</option><option>Local comercial</option><option>Oficina</option><option>Cochera</option><option>Galpón</option><option>Otro</option></select></div>
+      <div class="field"><label>Dirección</label><input id="p-dir" placeholder="Calle y número"></div>
+      <div class="field"><label>Ambientes / m²</label><input id="p-amb" placeholder="Ej: 2 amb / 48m²"></div>
+      <div class="field"><label>Monto base de alquiler ($)</label><input id="p-monto" type="number" placeholder="0"></div>
+      <div class="field"><label>Notas</label><input id="p-notas" placeholder="Observaciones"></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarPropiedad()">Guardar propiedad</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>🏢 Propiedades</h2></div>
+    <div class="filters">
+      <select id="f-prop-estado" onchange="renderPropiedades()"><option value="">Todos los estados</option><option value="libre">Libre</option><option value="ocupado">Ocupado</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Identificación</th><th>Tipo</th><th>Dirección</th><th>Detalle</th><th>Monto base</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="tbl-propiedades"><tr><td colspan="7" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INQUILINOS ============ -->
+<section id="inquilinos" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Nuevo inquilino</h2></div>
+    <div class="grid">
+      <div class="field"><label>Nombre y apellido *</label><input id="i-nombre" placeholder="Nombre completo"></div>
+      <div class="field"><label>DNI / CUIT</label><input id="i-dni" placeholder="00.000.000"></div>
+      <div class="field"><label>Teléfono</label><input id="i-tel" placeholder="Ej: 3815123456 (sin 0 ni 15)"></div>
+      <div class="field"><label>Email</label><input id="i-email" type="email" placeholder="correo@ejemplo.com"></div>
+      <div class="field"><label>Garante / Notas</label><input id="i-notas" placeholder="Garante u observaciones"></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarInquilino()">Guardar inquilino</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>👥 Inquilinos</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>DNI/CUIT</th><th>Teléfono</th><th>Email</th><th>Notas</th><th></th></tr></thead>
+        <tbody id="tbl-inquilinos"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONTRATOS ============ -->
+<section id="contratos" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Nuevo contrato</h2></div>
+    <div class="grid">
+      <div class="field"><label>Propiedad *</label><select id="c-prop"></select></div>
+      <div class="field"><label>Inquilino *</label><select id="c-inq"></select></div>
+      <div class="field"><label>Inicio *</label><input id="c-inicio" type="date"></div>
+      <div class="field"><label>Fin *</label><input id="c-fin" type="date"></div>
+      <div class="field"><label>Monto mensual ($) *</label><input id="c-monto" type="number" placeholder="0"></div>
+      <div class="field"><label>Día de vencimiento</label><input id="c-dia" type="number" min="1" max="31" placeholder="10"></div>
+      <div class="field"><label>Ajuste cada (meses)</label>
+        <select id="c-ajuste"><option value="0">Sin ajuste</option><option value="3">3 meses</option><option value="4">4 meses</option><option value="6">6 meses</option><option value="12">12 meses</option></select></div>
+      <div class="field"><label>Depósito ($)</label><input id="c-deposito" type="number" placeholder="0"></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarContrato()">Guardar contrato</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>📄 Contratos</h2></div>
+    <div class="filters">
+      <select id="f-cont-estado" onchange="renderContratos()"><option value="">Todos</option><option value="activo">Activos</option><option value="finalizado">Finalizados</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Inicio</th><th>Fin</th><th>Mensual</th><th>Ajuste</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="tbl-contratos"><tr><td colspan="8" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COBROS ============ -->
+<section id="cobros" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Registrar cobro</h2></div>
+    <div class="grid">
+      <div class="field"><label>Contrato *</label><select id="co-contrato" onchange="autoMonto()"></select></div>
+      <div class="field"><label>Período *</label><input id="co-periodo" type="month"></div>
+      <div class="field"><label>Monto cobrado ($) *</label><input id="co-monto" type="number" placeholder="0"></div>
+      <div class="field"><label>Fecha de pago</label><input id="co-fecha" type="date"></div>
+      <div class="field"><label>Medio de pago</label>
+        <select id="co-medio"><option>Efectivo</option><option>Transferencia</option><option>Depósito</option><option>Cheque</option><option>Otro</option></select></div>
+      <div class="field"><label>Notas</label><input id="co-notas" placeholder="Observaciones"></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarCobro()">Registrar cobro</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>💰 Cobros registrados</h2></div>
+    <div class="filters">
+      <input id="f-cobro-periodo" type="month" onchange="renderCobros()">
+      <select id="f-cobro-prop" onchange="renderCobros()"><option value="">Todas las propiedades</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Período</th><th>Monto</th><th>Fecha pago</th><th>Medio</th><th>Recibo</th><th></th></tr></thead>
+        <tbody id="tbl-cobros"><tr><td colspan="8" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GASTOS ============ -->
+<section id="gastos" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Registrar gasto</h2></div>
+    <div class="grid">
+      <div class="field"><label>Propiedad</label><select id="g-prop"></select></div>
+      <div class="field"><label>Tipo</label>
+        <select id="g-tipo"><option>Expensas</option><option>Reparación</option><option>Impuesto / ABL</option><option>Servicios</option><option>Inmobiliaria</option><option>Seguro</option><option>Otro</option></select></div>
+      <div class="field"><label>Descripción</label><input id="g-desc" placeholder="Detalle del gasto"></div>
+      <div class="field"><label>Monto ($) *</label><input id="g-monto" type="number" placeholder="0"></div>
+      <div class="field"><label>Fecha</label><input id="g-fecha" type="date"></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarGasto()">Registrar gasto</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>🧾 Gastos registrados</h2></div>
+    <div class="filters">
+      <input id="f-gasto-periodo" type="month" onchange="renderGastos()">
+      <select id="f-gasto-prop" onchange="renderGastos()"><option value="">Todas las propiedades</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Propiedad</th><th>Tipo</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
+        <tbody id="tbl-gastos"><tr><td colspan="6" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- MODAL ELIMINAR -->
+<div class="modal" id="modal-del">
+  <div class="modal-box">
+    <h3>¿Eliminar registro?</h3>
+    <p>Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" style="background:linear-gradient(135deg,var(--red),#d04a4a);color:#fff" onclick="confirmarEliminar()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="alert" id="alert"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ============================================================
+   👇👇👇  PEGÁ ACÁ TU CONFIGURACIÓN DE FIREBASE  👇👇👇
+   (la copiás desde la consola de Firebase → Configuración del proyecto)
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyB5FdHlkNhSkvWF4-b7wCJJE10tygkrybE",
+  authDomain: "adminalquileres-app.firebaseapp.com",
+  projectId: "adminalquileres-app",
+  storageBucket: "adminalquileres-app.firebasestorage.app",
+  messagingSenderId: "731038289465",
+  appId: "1:731038289465:web:ddf200034e07d63be507e8"
+};
+/* ============================================================ */
+
+let db = null;
+try {
+  if (!firebaseConfig.apiKey.startsWith("TU_")) {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  } else {
+    document.getElementById('cfg-warn').style.display = 'block';
+  }
+} catch(e){ document.getElementById('cfg-warn').style.display='block'; console.error(e); }
+
+/* ---------- CACHÉS ---------- */
+let propiedadesCache = [];
+let inquilinosCache = [];
+let contratosCache = [];
+let cobrosCache = [];
+let gastosCache = [];
+
+/* ---------- HELPERS ---------- */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + (Number(n)||0).toLocaleString('es-AR');
+const hoy = () => new Date().toISOString().slice(0,10);
+const mesActual = () => new Date().toISOString().slice(0,7);
+const fechaCorta = d => d ? d.split('-').reverse().join('/') : '—';
+const periodoLargo = p => { if(!p) return '—'; const [y,m]=p.split('-'); const ms=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return ms[+m]+' '+y; };
+
+function showAlert(msg){
+  const a=$('alert'); a.textContent=msg; a.classList.add('show');
+  setTimeout(()=>a.classList.remove('show'),2600);
+}
+function reqDb(){ if(!db){ showAlert('⚠️ Configurá Firebase primero'); return false;} return true; }
+
+/* ---------- NAVEGACIÓN ---------- */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    $(t.dataset.view).classList.add('active');
+  };
+});
+
+/* ============ CARGA GENERAL ============ */
+async function cargarTodo(){
+  if(!db) return;
+  const [p,i,c,co,g] = await Promise.all([
+    getDocs(collection(db,'propiedades')),
+    getDocs(collection(db,'inquilinos')),
+    getDocs(collection(db,'contratos')),
+    getDocs(collection(db,'cobros')),
+    getDocs(collection(db,'gastos'))
+  ]);
+  propiedadesCache = p.docs.map(d=>({id:d.id,...d.data()}));
+  inquilinosCache  = i.docs.map(d=>({id:d.id,...d.data()}));
+  contratosCache   = c.docs.map(d=>({id:d.id,...d.data()}));
+  cobrosCache      = co.docs.map(d=>({id:d.id,...d.data()}));
+  gastosCache      = g.docs.map(d=>({id:d.id,...d.data()}));
+  // estado ocupado/libre según contratos activos
+  const ocupadas = new Set(contratosCache.filter(c=>c.estado==='activo').map(c=>c.propiedadId));
+  propiedadesCache.forEach(p=>p.estado = ocupadas.has(p.id)?'ocupado':'libre');
+  renderAll();
+}
+function renderAll(){
+  renderPropiedades(); renderInquilinos(); renderContratos();
+  renderCobros(); renderGastos(); renderDashboard();
+  llenarSelects();
+}
+
+/* ============ PROPIEDADES ============ */
+window.guardarPropiedad = async ()=>{
+  if(!reqDb()) return;
+  const nombre=$('p-nombre').value.trim();
+  if(!nombre){ showAlert('Ingresá la identificación'); return; }
+  await addDoc(collection(db,'propiedades'),{
+    nombre, tipo:$('p-tipo').value, direccion:$('p-dir').value.trim(),
+    ambientes:$('p-amb').value.trim(), montoBase:+$('p-monto').value||0,
+    notas:$('p-notas').value.trim(), creado:hoy()
+  });
+  ['p-nombre','p-dir','p-amb','p-monto','p-notas'].forEach(id=>$(id).value='');
+  showAlert('🏢 Propiedad guardada'); cargarTodo();
+};
+window.renderPropiedades = ()=>{
+  const tb=$('tbl-propiedades'); const f=$('f-prop-estado').value;
+  let rows=[...propiedadesCache].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(f) rows=rows.filter(p=>p.estado===f);
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="empty">Sin propiedades aún</td></tr>'; return; }
+  tb.innerHTML=rows.map(p=>`<tr>
+    <td><b>${p.nombre}</b></td><td>${p.tipo||'—'}</td><td>${p.direccion||'—'}</td>
+    <td class="muted">${p.ambientes||'—'}</td><td>${p.montoBase?fmt(p.montoBase):'—'}</td>
+    <td><span class="badge ${p.estado==='ocupado'?'badge-blue':'badge-green'}">${p.estado==='ocupado'?'Ocupado':'Libre'}</span></td>
+    <td><button class="btn-icon del" onclick="eliminar('propiedades','${p.id}')">🗑️</button></td></tr>`).join('');
+};
+
+/* ============ INQUILINOS ============ */
+window.guardarInquilino = async ()=>{
+  if(!reqDb()) return;
+  const nombre=$('i-nombre').value.trim();
+  if(!nombre){ showAlert('Ingresá el nombre'); return; }
+  await addDoc(collection(db,'inquilinos'),{
+    nombre, dni:$('i-dni').value.trim(), telefono:$('i-tel').value.trim(),
+    email:$('i-email').value.trim(), notas:$('i-notas').value.trim(), creado:hoy()
+  });
+  ['i-nombre','i-dni','i-tel','i-email','i-notas'].forEach(id=>$(id).value='');
+  showAlert('👤 Inquilino guardado'); cargarTodo();
+};
+window.renderInquilinos = ()=>{
+  const tb=$('tbl-inquilinos');
+  const rows=[...inquilinosCache].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Sin inquilinos aún</td></tr>'; return; }
+  tb.innerHTML=rows.map(i=>`<tr>
+    <td><b>${i.nombre}</b></td><td class="muted">${i.dni||'—'}</td><td>${i.telefono||'—'}</td>
+    <td class="muted">${i.email||'—'}</td><td class="muted">${i.notas||'—'}</td>
+    <td><button class="btn-icon del" onclick="eliminar('inquilinos','${i.id}')">🗑️</button></td></tr>`).join('');
+};
+
+/* ============ CONTRATOS ============ */
+window.guardarContrato = async ()=>{
+  if(!reqDb()) return;
+  const propId=$('c-prop').value, inqId=$('c-inq').value;
+  if(!propId||!inqId){ showAlert('Elegí propiedad e inquilino'); return; }
+  if(!$('c-inicio').value||!$('c-fin').value){ showAlert('Cargá inicio y fin'); return; }
+  const prop=propiedadesCache.find(p=>p.id===propId);
+  const inq=inquilinosCache.find(i=>i.id===inqId);
+  await addDoc(collection(db,'contratos'),{
+    propiedadId:propId, propiedadNombre:prop?.nombre||'',
+    inquilinoId:inqId, inquilinoNombre:inq?.nombre||'',
+    fechaInicio:$('c-inicio').value, fechaFin:$('c-fin').value,
+    montoMensual:+$('c-monto').value||0, diaVencimiento:+$('c-dia').value||10,
+    ajusteMeses:+$('c-ajuste').value||0, deposito:+$('c-deposito').value||0,
+    estado:'activo', creado:hoy()
+  });
+  ['c-inicio','c-fin','c-monto','c-dia','c-deposito'].forEach(id=>$(id).value='');
+  showAlert('📄 Contrato guardado'); cargarTodo();
+};
+window.renderContratos = ()=>{
+  const tb=$('tbl-contratos'); const f=$('f-cont-estado').value;
+  let rows=[...contratosCache].sort((a,b)=>(b.fechaInicio||'').localeCompare(a.fechaInicio||''));
+  if(f) rows=rows.filter(c=>c.estado===f);
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Sin contratos aún</td></tr>'; return; }
+  tb.innerHTML=rows.map(c=>{
+    const aj = c.ajusteMeses? c.ajusteMeses+' meses':'—';
+    return `<tr>
+    <td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+    <td class="muted">${fechaCorta(c.fechaInicio)}</td><td class="muted">${fechaCorta(c.fechaFin)}</td>
+    <td>${fmt(c.montoMensual)}</td><td class="muted">${aj}</td>
+    <td><span class="badge ${c.estado==='activo'?'badge-green':'badge-gray'}">${c.estado==='activo'?'Activo':'Finalizado'}</span></td>
+    <td style="white-space:nowrap">
+      <button class="btn-icon" title="${c.estado==='activo'?'Finalizar':'Reactivar'}" onclick="toggleContrato('${c.id}')">${c.estado==='activo'?'🔒':'🔓'}</button>
+      <button class="btn-icon del" onclick="eliminar('contratos','${c.id}')">🗑️</button>
+    </td></tr>`;
+  }).join('');
+};
+window.toggleContrato = async (id)=>{
+  const c=contratosCache.find(x=>x.id===id); if(!c) return;
+  const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  await updateDoc(doc(db,'contratos',id),{estado: c.estado==='activo'?'finalizado':'activo'});
+  showAlert('Contrato actualizado'); cargarTodo();
+};
+
+/* ============ COBROS ============ */
+window.autoMonto = ()=>{
+  const c=contratosCache.find(x=>x.id===$('co-contrato').value);
+  if(c && !$('co-monto').value) $('co-monto').value=c.montoMensual||'';
+};
+window.guardarCobro = async ()=>{
+  if(!reqDb()) return;
+  const contId=$('co-contrato').value;
+  if(!contId){ showAlert('Elegí el contrato'); return; }
+  if(!$('co-periodo').value){ showAlert('Indicá el período'); return; }
+  const c=contratosCache.find(x=>x.id===contId);
+  await addDoc(collection(db,'cobros'),{
+    contratoId:contId, propiedadId:c.propiedadId, propiedadNombre:c.propiedadNombre,
+    inquilinoId:c.inquilinoId, inquilinoNombre:c.inquilinoNombre,
+    periodo:$('co-periodo').value, monto:+$('co-monto').value||0,
+    fechaPago:$('co-fecha').value||hoy(), medio:$('co-medio').value,
+    notas:$('co-notas').value.trim(), creado:hoy()
+  });
+  ['co-monto','co-notas'].forEach(id=>$(id).value='');
+  showAlert('💰 Cobro registrado'); cargarTodo();
+};
+window.renderCobros = ()=>{
+  const tb=$('tbl-cobros');
+  const fp=$('f-cobro-periodo').value, fpr=$('f-cobro-prop').value;
+  let rows=[...cobrosCache].sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
+  if(fp) rows=rows.filter(c=>c.periodo===fp);
+  if(fpr) rows=rows.filter(c=>c.propiedadId===fpr);
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Sin cobros registrados</td></tr>'; return; }
+  tb.innerHTML=rows.map(c=>`<tr>
+    <td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+    <td><span class="badge badge-gray">${periodoLargo(c.periodo)}</span></td>
+    <td>${fmt(c.monto)}</td><td class="muted">${fechaCorta(c.fechaPago)}</td><td class="muted">${c.medio||'—'}</td>
+    <td>
+      <button class="btn btn-ghost btn-sm" onclick="reciboPDF('${c.id}')">📄 PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="reciboWA('${c.id}')">📱 WA</button>
+    </td>
+    <td><button class="btn-icon del" onclick="eliminar('cobros','${c.id}')">🗑️</button></td></tr>`).join('');
+};
+
+/* ---- RECIBO PDF ---- */
+window.reciboPDF = (id)=>{
+  const c=cobrosCache.find(x=>x.id===id); if(!c) return;
+  const { jsPDF }=window.jspdf; const d=new jsPDF();
+  d.setFontSize(20); d.setFont(undefined,'bold'); d.text('RECIBO DE ALQUILER',105,24,{align:'center'});
+  d.setDrawColor(200); d.line(20,30,190,30);
+  d.setFontSize(11); d.setFont(undefined,'normal');
+  let y=44;
+  const fila=(k,v)=>{ d.setFont(undefined,'bold'); d.text(k,20,y); d.setFont(undefined,'normal'); d.text(String(v),70,y); y+=10; };
+  fila('Fecha de pago:', fechaCorta(c.fechaPago));
+  fila('Período:', periodoLargo(c.periodo));
+  fila('Propiedad:', c.propiedadNombre);
+  fila('Inquilino:', c.inquilinoNombre);
+  fila('Medio de pago:', c.medio||'—');
+  if(c.notas) fila('Observaciones:', c.notas);
+  y+=6; d.setDrawColor(200); d.line(20,y,190,y); y+=14;
+  d.setFontSize(15); d.setFont(undefined,'bold');
+  d.text('Total recibido: '+fmt(c.monto), 20, y);
+  y+=30; d.setFontSize(10); d.setFont(undefined,'normal'); d.setTextColor(120);
+  d.text('Recibí la suma indicada en concepto de alquiler del período detallado.',20,y);
+  y+=24; d.text('______________________________',20,y); y+=8; d.text('Firma y aclaración',20,y);
+  d.save(`Recibo_${c.propiedadNombre}_${c.periodo}.pdf`);
+};
+/* ---- RECIBO WHATSAPP ---- */
+window.reciboWA = (id)=>{
+  const c=cobrosCache.find(x=>x.id===id); if(!c) return;
+  const inq=inquilinosCache.find(i=>i.id===c.inquilinoId);
+  let tel=(inq?.telefono||'').replace(/\D/g,'');
+  if(tel && !tel.startsWith('54')) tel='54'+tel;
+  const msg=`*RECIBO DE ALQUILER*%0A%0A`+
+    `Propiedad: ${c.propiedadNombre}%0A`+
+    `Inquilino: ${c.inquilinoNombre}%0A`+
+    `Período: ${periodoLargo(c.periodo)}%0A`+
+    `Fecha de pago: ${fechaCorta(c.fechaPago)}%0A`+
+    `Medio: ${c.medio||'-'}%0A`+
+    `*Total recibido: ${fmt(c.monto)}*%0A%0A`+
+    `¡Gracias!`;
+  window.open(`https://wa.me/${tel}?text=${msg}`,'_blank');
+};
+
+/* ============ GASTOS ============ */
+window.guardarGasto = async ()=>{
+  if(!reqDb()) return;
+  if(!$('g-monto').value){ showAlert('Ingresá el monto'); return; }
+  const prop=propiedadesCache.find(p=>p.id===$('g-prop').value);
+  await addDoc(collection(db,'gastos'),{
+    propiedadId:$('g-prop').value, propiedadNombre:prop?.nombre||'General',
+    tipo:$('g-tipo').value, descripcion:$('g-desc').value.trim(),
+    monto:+$('g-monto').value||0, fecha:$('g-fecha').value||hoy(), creado:hoy()
+  });
+  ['g-desc','g-monto'].forEach(id=>$(id).value='');
+  showAlert('🧾 Gasto registrado'); cargarTodo();
+};
+window.renderGastos = ()=>{
+  const tb=$('tbl-gastos');
+  const fp=$('f-gasto-periodo').value, fpr=$('f-gasto-prop').value;
+  let rows=[...gastosCache].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  if(fp) rows=rows.filter(g=>(g.fecha||'').slice(0,7)===fp);
+  if(fpr) rows=rows.filter(g=>g.propiedadId===fpr);
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Sin gastos registrados</td></tr>'; return; }
+  tb.innerHTML=rows.map(g=>`<tr>
+    <td class="muted">${fechaCorta(g.fecha)}</td><td><b>${g.propiedadNombre}</b></td>
+    <td><span class="badge badge-amber">${g.tipo}</span></td><td class="muted">${g.descripcion||'—'}</td>
+    <td>${fmt(g.monto)}</td>
+    <td><button class="btn-icon del" onclick="eliminar('gastos','${g.id}')">🗑️</button></td></tr>`).join('');
+};
+
+/* ============ DASHBOARD ============ */
+function renderDashboard(){
+  const total=propiedadesCache.length;
+  const ocup=propiedadesCache.filter(p=>p.estado==='ocupado').length;
+  const libres=total-ocup;
+  const mes=mesActual();
+  const ingresosMes=cobrosCache.filter(c=>c.periodo===mes).reduce((s,c)=>s+(c.monto||0),0);
+  const gastosMes=gastosCache.filter(g=>(g.fecha||'').slice(0,7)===mes).reduce((s,g)=>s+(g.monto||0),0);
+  const rentaPotencial=contratosCache.filter(c=>c.estado==='activo').reduce((s,c)=>s+(c.montoMensual||0),0);
+
+  $('dash-stats').innerHTML=`
+    <div class="stat blue"><div class="label">Propiedades</div><div class="value">${total}</div><div class="sub">${ocup} ocupadas · ${libres} libres</div></div>
+    <div class="stat green"><div class="label">Cobrado este mes</div><div class="value">${fmt(ingresosMes)}</div><div class="sub">${periodoLargo(mes)}</div></div>
+    <div class="stat amber"><div class="label">Renta potencial/mes</div><div class="value">${fmt(rentaPotencial)}</div><div class="sub">contratos activos</div></div>
+    <div class="stat red"><div class="label">Gastos este mes</div><div class="value">${fmt(gastosMes)}</div><div class="sub">balance ${fmt(ingresosMes-gastosMes)}</div></div>`;
+
+  // cobros del mes: contratos activos cruzados con cobros del período
+  const activos=contratosCache.filter(c=>c.estado==='activo');
+  const tbody=$('dash-cobros');
+  if(!activos.length){ tbody.innerHTML='<tr><td colspan="5" class="empty">Sin contratos activos</td></tr>'; }
+  else tbody.innerHTML=activos.map(c=>{
+    const pagado=cobrosCache.find(x=>x.contratoId===c.id && x.periodo===mes);
+    return `<tr><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+      <td class="muted">${periodoLargo(mes)}</td><td>${fmt(c.montoMensual)}</td>
+      <td>${pagado?'<span class="badge badge-green">Cobrado</span>':'<span class="badge badge-red">Pendiente</span>'}</td></tr>`;
+  }).join('');
+
+  // contratos por vencer 90 días
+  const hoyD=new Date(); const lim=new Date(); lim.setDate(lim.getDate()+90);
+  const venc=contratosCache.filter(c=>c.estado==='activo'&&c.fechaFin)
+    .map(c=>({...c,fin:new Date(c.fechaFin+'T00:00:00')}))
+    .filter(c=>c.fin>=hoyD&&c.fin<=lim).sort((a,b)=>a.fin-b.fin);
+  const tv=$('dash-vencer');
+  if(!venc.length){ tv.innerHTML='<tr><td colspan="4" class="empty">Ningún contrato vence en los próximos 90 días</td></tr>'; }
+  else tv.innerHTML=venc.map(c=>{
+    const dias=Math.ceil((c.fin-hoyD)/86400000);
+    return `<tr><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
+      <td class="muted">${fechaCorta(c.fechaFin)}</td>
+      <td><span class="badge ${dias<=30?'badge-red':'badge-amber'}">${dias} días</span></td></tr>`;
+  }).join('');
+}
+
+/* ============ SELECTS ============ */
+function llenarSelects(){
+  const props=[...propiedadesCache].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const inqs=[...inquilinosCache].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const optsP=props.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  const optsI=inqs.map(i=>`<option value="${i.id}">${i.nombre}</option>`).join('');
+  if($('c-prop')) $('c-prop').innerHTML='<option value="">Elegir…</option>'+optsP;
+  if($('c-inq'))  $('c-inq').innerHTML='<option value="">Elegir…</option>'+optsI;
+  if($('g-prop')) $('g-prop').innerHTML='<option value="">General (sin propiedad)</option>'+optsP;
+
+  const conts=[...contratosCache].filter(c=>c.estado==='activo')
+    .sort((a,b)=>a.propiedadNombre.localeCompare(b.propiedadNombre));
+  if($('co-contrato')) $('co-contrato').innerHTML='<option value="">Elegir contrato…</option>'+
+    conts.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}</option>`).join('');
+
+  // filtros por propiedad
+  const filtP='<option value="">Todas las propiedades</option>'+optsP;
+  if($('f-cobro-prop')) $('f-cobro-prop').innerHTML=filtP;
+  if($('f-gasto-prop')) $('f-gasto-prop').innerHTML=filtP;
+}
+
+/* ============ ELIMINAR ============ */
+let _delCol='', _delId='';
+window.eliminar=(col,id)=>{ _delCol=col; _delId=id; $('modal-del').classList.add('open'); };
+window.confirmarEliminar=async ()=>{
+  await deleteDoc(doc(db,_delCol,_delId));
+  cerrarModal(); showAlert('🗑️ Registro eliminado'); cargarTodo();
+};
+window.cerrarModal=()=>$('modal-del').classList.remove('open');
+
+/* defaults de fecha */
+$('co-periodo').value=mesActual();
+$('co-fecha').value=hoy();
+$('g-fecha').value=hoy();
+
+/* INIT */
+cargarTodo();
+</script>
+</body>
+</html>
