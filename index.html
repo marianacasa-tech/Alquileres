@@ -124,19 +124,68 @@ tr:hover td{background:rgba(255,255,255,.015)}
   border-radius:12px;margin:16px 26px;max-width:1280px;font-size:13px}
 .cfg-warn b{color:var(--red)}
 @media(max-width:600px){.brand h1{font-size:21px}.stat .value{font-size:24px}}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;z-index:300;background:var(--bg);
+  background-image:radial-gradient(circle at 30% 20%,rgba(224,164,88,.10),transparent 45%),radial-gradient(circle at 75% 85%,rgba(91,155,213,.08),transparent 50%);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:34px 30px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.login-card .logo{width:54px;height:54px;font-size:28px;margin:0 auto 16px}
+.login-card h2{text-align:center;font-size:22px;margin-bottom:4px}
+.login-card p.sub{text-align:center;color:var(--text2);font-size:13px;margin-bottom:24px}
+.login-card label{margin-top:14px}
+.login-card .btn{width:100%;justify-content:center;margin-top:22px}
+.login-msg{margin-top:14px;font-size:13px;text-align:center;min-height:18px}
+.login-msg.err{color:var(--red)}
+
+/* HEADER usuario */
+.user-box{margin-left:auto;display:flex;align-items:center;gap:12px}
+.user-box .uinfo{text-align:right;font-size:12.5px}
+.user-box .uinfo b{display:block;font-size:13.5px}
+header .brand{position:relative}
+.topbar{display:flex;align-items:center;gap:13px;max-width:1280px;margin:0 auto}
+
+/* MODO LECTURA */
+#lectura-banner{display:none;max-width:1280px;margin:14px auto 0;padding:10px 18px;
+  background:var(--blue-bg);border:1px solid var(--blue);color:var(--text);border-radius:12px;font-size:13px;font-weight:600}
+body.lectura #lectura-banner{display:block}
+body.lectura .btn-icon{display:none !important}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
     <div class="logo">🏠</div>
-    <div>
-      <h1>Gestión de Alquileres</h1>
-      <p>Inmuebles · Contratos · Cobros · Gastos</p>
+    <h2>Gestión de Alquileres</h2>
+    <p class="sub">Ingresá con tu usuario y contraseña</p>
+    <label>Email</label>
+    <input id="login-email" type="email" placeholder="tu@email.com" autocomplete="username">
+    <label>Contraseña</label>
+    <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')hacerLogin()">
+    <button class="btn btn-primary" onclick="hacerLogin()">Ingresar</button>
+    <div id="login-msg" class="login-msg"></div>
+  </div>
+</div>
+
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">🏠</div>
+      <div>
+        <h1>Gestión de Alquileres</h1>
+        <p>Inmuebles · Contratos · Cobros · Gastos</p>
+      </div>
+    </div>
+    <div class="user-box" id="user-box" style="display:none">
+      <div class="uinfo"><b id="u-nombre">—</b><span id="u-rol" class="muted"></span></div>
+      <button class="btn btn-ghost btn-sm" onclick="hacerLogout()">Salir</button>
     </div>
   </div>
 </header>
+
+<div id="lectura-banner">👁️ Estás en modo <b>solo lectura</b>: podés consultar y descargar PDFs, pero no modificar datos.</div>
 
 <div id="cfg-warn" class="cfg-warn" style="display:none">
   <b>⚠️ Falta configurar Firebase.</b> Abrí el archivo y pegá tu configuración de Firebase en el bloque <code>firebaseConfig</code> (líneas marcadas). Sin eso la app no guarda datos.
@@ -152,6 +201,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <button class="tab" data-view="ajustes">📈 Ajustes</button>
   <button class="tab" data-view="gastos">🧾 Gastos</button>
   <button class="tab" data-view="liquidacion">💵 Liquidación</button>
+  <button class="tab" data-view="usuarios" id="tab-usuarios" style="display:none">👤 Usuarios</button>
 </nav>
 
 <main>
@@ -448,6 +498,31 @@ tr:hover td{background:rgba(255,255,255,.015)}
   </div>
 </section>
 
+<!-- ============ USUARIOS ============ -->
+<section id="usuarios" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Nuevo usuario</h2></div>
+    <div class="grid">
+      <div class="field"><label>Nombre</label><input id="us-nombre" placeholder="Nombre y apellido"></div>
+      <div class="field"><label>Email *</label><input id="us-email" type="email" placeholder="persona@email.com"></div>
+      <div class="field"><label>Contraseña *</label><input id="us-pass" type="password" placeholder="Mínimo 6 caracteres"></div>
+      <div class="field"><label>Rol *</label>
+        <select id="us-rol"><option value="editor">Editor (puede modificar)</option><option value="lector">Lector (solo lectura)</option></select></div>
+    </div>
+    <p class="muted" style="margin-top:12px;font-size:12.5px">💡 Al crear el usuario se genera su cuenta de acceso. Después podrá ingresar con ese email y contraseña.</p>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarUsuario()">Crear usuario</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>👤 Usuarios con acceso</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th></th></tr></thead>
+        <tbody id="tbl-usuarios"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <!-- MODAL ÍTEMS ADICIONALES -->
@@ -483,8 +558,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, orderBy }
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, updateDoc, setDoc, getDoc, doc, query, orderBy }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 /* ============================================================
    👇👇👇  PEGÁ ACÁ TU CONFIGURACIÓN DE FIREBASE  👇👇👇
@@ -500,15 +577,21 @@ const firebaseConfig = {
 };
 /* ============================================================ */
 
-let db = null;
+let db = null, auth = null, secondaryAuth = null;
 try {
   if (!firebaseConfig.apiKey.startsWith("TU_")) {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
+    // app secundaria: crea usuarios sin cerrar tu sesión actual
+    const secondaryApp = initializeApp(firebaseConfig, 'secondary');
+    secondaryAuth = getAuth(secondaryApp);
   } else {
     document.getElementById('cfg-warn').style.display = 'block';
   }
 } catch(e){ document.getElementById('cfg-warn').style.display='block'; console.error(e); }
+
+let rolActual='lector', emailActual='', usuariosCache=[];
 
 /* ---------- CACHÉS ---------- */
 let propiedadesCache = [];
@@ -1488,6 +1571,126 @@ window.confirmarEliminar=async ()=>{
 };
 window.cerrarModal=()=>$('modal-del').classList.remove('open');
 
+/* ============ AUTENTICACIÓN Y USUARIOS ============ */
+window.hacerLogin = async ()=>{
+  const msg=$('login-msg'); msg.className='login-msg'; msg.textContent='';
+  if(!auth){ msg.textContent='Firebase no configurado'; msg.className='login-msg err'; return; }
+  const email=$('login-email').value.trim(), pass=$('login-pass').value;
+  if(!email||!pass){ msg.textContent='Completá email y contraseña'; msg.className='login-msg err'; return; }
+  msg.textContent='Ingresando…';
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+    // el resto lo maneja onAuthStateChanged
+  }catch(e){
+    msg.className='login-msg err';
+    msg.textContent = (e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found')
+      ? 'Email o contraseña incorrectos' : 'No se pudo ingresar';
+  }
+};
+window.hacerLogout = async ()=>{ if(auth) await signOut(auth); };
+
+async function onLoginOk(user){
+  emailActual=user.email;
+  // buscar perfil/rol
+  let perfil=null;
+  try{ const s=await getDoc(doc(db,'usuarios',user.email)); if(s.exists()) perfil=s.data(); }catch(e){}
+  if(!perfil){
+    // usuario autenticado pero sin permisos asignados
+    $('login-msg').className='login-msg err';
+    $('login-msg').textContent='Tu cuenta no tiene acceso asignado. Avisá al administrador.';
+    await signOut(auth);
+    return;
+  }
+  rolActual = perfil.rol==='editor' ? 'editor' : 'lector';
+  $('u-nombre').textContent = perfil.nombre || user.email;
+  $('u-rol').textContent = rolActual==='editor' ? 'Editor' : 'Solo lectura';
+  $('login-screen').style.display='none';
+  $('user-box').style.display='flex';
+  $('login-pass').value='';
+  aplicarRol();
+  await cargarTodo();
+  if(rolActual==='editor') cargarUsuarios();
+}
+function aplicarRol(){
+  const lector = rolActual!=='editor';
+  document.body.classList.toggle('lectura', lector);
+  // ocultar paneles con botón de acción (formularios de alta/edición)
+  document.querySelectorAll('main .panel').forEach(p=>{
+    if(p.querySelector('.btn-primary')) p.style.display = lector ? 'none' : '';
+  });
+  // tab de usuarios solo para editores
+  $('tab-usuarios').style.display = lector ? 'none' : '';
+  if(lector && document.querySelector('#usuarios.active')){
+    document.querySelector('.tab[data-view="dashboard"]').click();
+  }
+}
+
+if(auth){
+  onAuthStateChanged(auth, (user)=>{
+    if(user){ onLoginOk(user); }
+    else {
+      $('login-screen').style.display='flex';
+      $('user-box').style.display='none';
+      document.body.classList.remove('lectura');
+    }
+  });
+} else {
+  $('login-screen').style.display='none'; // sin firebase, no se puede loguear
+}
+
+/* ---- GESTIÓN DE USUARIOS (solo editores) ---- */
+window.guardarUsuario = async ()=>{
+  if(rolActual!=='editor'){ showAlert('Sin permisos'); return; }
+  const email=$('us-email').value.trim().toLowerCase();
+  const pass=$('us-pass').value, nombre=$('us-nombre').value.trim(), rol=$('us-rol').value;
+  if(!email||!pass){ showAlert('Email y contraseña obligatorios'); return; }
+  if(pass.length<6){ showAlert('La contraseña debe tener 6+ caracteres'); return; }
+  try{
+    // crear cuenta con la app secundaria (no cierra tu sesión)
+    await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+    await signOut(secondaryAuth);
+  }catch(e){
+    if(e.code==='auth/email-already-in-use'){
+      // la cuenta ya existe: solo guardamos/actualizamos el rol
+    } else {
+      showAlert(e.code==='auth/invalid-email'?'Email inválido':'No se pudo crear la cuenta'); return;
+    }
+  }
+  await setDoc(doc(db,'usuarios',email),{nombre, rol, email, creado:hoy()});
+  ['us-nombre','us-email','us-pass'].forEach(id=>$(id).value='');
+  showAlert('👤 Usuario creado'); cargarUsuarios();
+};
+async function cargarUsuarios(){
+  if(!db) return;
+  try{ const s=await getDocs(collection(db,'usuarios')); usuariosCache=s.docs.map(d=>({id:d.id,...d.data()})); }catch(e){ usuariosCache=[]; }
+  renderUsuarios();
+}
+window.renderUsuarios = ()=>{
+  const tb=$('tbl-usuarios'); if(!tb) return;
+  const rows=[...usuariosCache].sort((a,b)=>(a.nombre||a.email||'').localeCompare(b.nombre||b.email||''));
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="4" class="empty">Sin usuarios</td></tr>'; return; }
+  tb.innerHTML=rows.map(u=>`<tr>
+    <td><b>${u.nombre||'—'}</b></td><td class="muted">${u.email||u.id}</td>
+    <td><span class="badge ${u.rol==='editor'?'badge-green':'badge-blue'}">${u.rol==='editor'?'Editor':'Solo lectura'}</span></td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-ghost btn-sm" onclick="cambiarRol('${u.id}')">Cambiar rol</button>
+      ${u.id===emailActual?'':`<button class="btn-icon del" onclick="quitarUsuario('${u.id}')">🗑️</button>`}
+    </td></tr>`).join('');
+};
+window.cambiarRol = async (email)=>{
+  if(rolActual!=='editor') return;
+  const u=usuariosCache.find(x=>x.id===email); if(!u) return;
+  const nuevo = u.rol==='editor' ? 'lector' : 'editor';
+  await updateDoc(doc(db,'usuarios',email),{rol:nuevo});
+  showAlert('Rol actualizado'); cargarUsuarios();
+};
+window.quitarUsuario = async (email)=>{
+  if(rolActual!=='editor') return;
+  if(email===emailActual){ showAlert('No podés quitarte a vos mismo'); return; }
+  await deleteDoc(doc(db,'usuarios',email));
+  showAlert('Acceso revocado'); cargarUsuarios();
+};
+
 /* defaults de fecha */
 $('co-periodo').value=mesActual();
 $('co-fecha').value=hoy();
@@ -1496,9 +1699,6 @@ $('ga-fecha').value=hoy();
 $('aj-fecha').value=hoy();
 $('liq-mes').value=mesActual();
 renderLiqCalc();
-
-/* INIT */
-cargarTodo();
 </script>
 </body>
 </html>
