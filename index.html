@@ -251,7 +251,7 @@ body.lectura .btn-icon{display:none !important}
       <div class="field"><label>Monto base de alquiler ($)</label><input id="p-monto" type="number" placeholder="0"></div>
       <div class="field"><label>Notas</label><input id="p-notas" placeholder="Observaciones"></div>
     </div>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarPropiedad()">Guardar propiedad</button></div>
+    <div style="margin-top:16px"><button id="btn-prop" class="btn btn-primary" onclick="guardarPropiedad()">Guardar propiedad</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>🏢 Propiedades</h2></div>
@@ -278,7 +278,7 @@ body.lectura .btn-icon{display:none !important}
       <div class="field"><label>Email</label><input id="i-email" type="email" placeholder="correo@ejemplo.com"></div>
       <div class="field"><label>Garante / Notas</label><input id="i-notas" placeholder="Garante u observaciones"></div>
     </div>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarInquilino()">Guardar inquilino</button></div>
+    <div style="margin-top:16px"><button id="btn-inq" class="btn btn-primary" onclick="guardarInquilino()">Guardar inquilino</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>👥 Inquilinos</h2></div>
@@ -308,7 +308,7 @@ body.lectura .btn-icon{display:none !important}
       <div class="field"><label>Moneda del depósito</label>
         <select id="c-deposito-moneda"><option value="ARS">Pesos (ARS)</option><option value="USD">Dólares (USD)</option></select></div>
     </div>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarContrato()">Guardar contrato</button></div>
+    <div style="margin-top:16px"><button id="btn-cont" class="btn btn-primary" onclick="guardarContrato()">Guardar contrato</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>📄 Contratos</h2></div>
@@ -317,8 +317,8 @@ body.lectura .btn-icon{display:none !important}
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Inicio</th><th>Fin</th><th>Mensual</th><th>Adicionales</th><th>Estado</th><th></th></tr></thead>
-        <tbody id="tbl-contratos"><tr><td colspan="8" class="loading">Cargando…</td></tr></tbody>
+        <thead><tr><th>Propiedad</th><th>Inquilino</th><th>Inicio</th><th>Fin</th><th>Mensual</th><th>Ajuste</th><th>Adicionales</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="tbl-contratos"><tr><td colspan="9" class="loading">Cargando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -339,7 +339,7 @@ body.lectura .btn-icon{display:none !important}
     </div>
     <div id="co-adic-box" style="margin-top:14px"></div>
     <div id="co-desglose" class="muted" style="margin-top:12px;font-size:13px"></div>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarCobro()">Registrar cobro</button></div>
+    <div style="margin-top:16px"><button id="btn-cobro" class="btn btn-primary" onclick="guardarCobro()">Registrar cobro</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>💰 Cobros registrados</h2></div>
@@ -378,7 +378,7 @@ body.lectura .btn-icon{display:none !important}
       <div class="field"><label>Notas</label><input id="ga-notas" placeholder="Observaciones"></div>
     </div>
     <p class="muted" style="margin-top:12px;font-size:12.5px">💡 <b>Pago</b> = el inquilino entrega parte (o todo) del depósito. <b>Conversión</b> = pasás pesos atesorados a dólares. <b>Devolución</b> = le devolvés la garantía al terminar el contrato.</p>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarGarantia()">Registrar movimiento</button></div>
+    <div style="margin-top:16px"><button id="btn-gar" class="btn btn-primary" onclick="guardarGarantia()">Registrar movimiento</button></div>
   </div>
 
   <div class="panel">
@@ -431,6 +431,12 @@ body.lectura .btn-icon{display:none !important}
 
   <div class="panel">
     <div class="panel-head"><h2>📜 Historial de ajustes</h2></div>
+    <div class="filters">
+      <input id="f-ajh-desde" type="date" onchange="renderAjustes()" title="Desde">
+      <input id="f-ajh-hasta" type="date" onchange="renderAjustes()" title="Hasta">
+      <select id="f-ajh-inq" onchange="renderAjustes()"><option value="">Todos los inquilinos</option></select>
+      <button class="btn btn-ghost btn-sm" onclick="limpiarFiltroAjustes()">Limpiar</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Fecha</th><th>Propiedad</th><th>Inquilino</th><th>Monto anterior</th><th>Monto nuevo</th><th>%</th><th>Aviso</th></tr></thead>
@@ -453,7 +459,7 @@ body.lectura .btn-icon{display:none !important}
       <div class="field" id="g-dom-field" style="display:none"><label>Domicilio a prorratear</label><select id="g-domicilio"></select></div>
     </div>
     <p class="muted" style="margin-top:12px;font-size:12.5px">💡 Si marcás <b>Prorrateado: Sí</b>, el monto se divide entre las unidades ocupadas del domicilio elegido y se suma como <b>gastos comunes</b> al alquiler de cada inquilino en la cobranza del mes de la fecha.</p>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarGasto()">Registrar gasto</button></div>
+    <div style="margin-top:16px"><button id="btn-gasto" class="btn btn-primary" onclick="guardarGasto()">Registrar gasto</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>🧾 Gastos registrados</h2></div>
@@ -616,6 +622,11 @@ function showAlert(msg){
 }
 function reqDb(){ if(!db){ showAlert('⚠️ Configurá Firebase primero'); return false;} return true; }
 
+/* ---------- ESTADO DE EDICIÓN ---------- */
+const editId = {prop:null, inq:null, cont:null, cobro:null, gar:null, gasto:null};
+function setBtn(id, txt){ const b=$(id); if(b) b.textContent=txt; }
+function irA(view){ const t=document.querySelector(`.tab[data-view="${view}"]`); if(t) t.click(); window.scrollTo({top:0,behavior:'smooth'}); }
+
 /* ---------- NAVEGACIÓN ---------- */
 document.querySelectorAll('.tab').forEach(t=>{
   t.onclick=()=>{
@@ -663,13 +674,19 @@ window.guardarPropiedad = async ()=>{
   if(!reqDb()) return;
   const nombre=$('p-nombre').value.trim();
   if(!nombre){ showAlert('Ingresá la identificación'); return; }
-  await addDoc(collection(db,'propiedades'),{
-    nombre, tipo:$('p-tipo').value, direccion:$('p-dir').value.trim(),
-    ambientes:$('p-amb').value.trim(), montoBase:+$('p-monto').value||0,
-    notas:$('p-notas').value.trim(), creado:hoy()
-  });
+  const data={ nombre, tipo:$('p-tipo').value, direccion:$('p-dir').value.trim(),
+    ambientes:$('p-amb').value.trim(), montoBase:+$('p-monto').value||0, notas:$('p-notas').value.trim() };
+  if(editId.prop){ await updateDoc(doc(db,'propiedades',editId.prop), data); editId.prop=null; setBtn('btn-prop','Guardar propiedad'); showAlert('🏢 Propiedad actualizada'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'propiedades'), data); showAlert('🏢 Propiedad guardada'); }
   ['p-nombre','p-dir','p-amb','p-monto','p-notas'].forEach(id=>$(id).value='');
-  showAlert('🏢 Propiedad guardada'); cargarTodo();
+  cargarTodo();
+};
+window.editarPropiedad = (id)=>{
+  const p=propiedadesCache.find(x=>x.id===id); if(!p) return;
+  $('p-nombre').value=p.nombre||''; $('p-tipo').value=p.tipo||'Departamento';
+  $('p-dir').value=p.direccion||''; $('p-amb').value=p.ambientes||'';
+  $('p-monto').value=p.montoBase||''; $('p-notas').value=p.notas||'';
+  editId.prop=id; setBtn('btn-prop','Actualizar propiedad'); irA('propiedades');
 };
 window.renderPropiedades = ()=>{
   const tb=$('tbl-propiedades'); const f=$('f-prop-estado').value;
@@ -680,7 +697,8 @@ window.renderPropiedades = ()=>{
     <td><b>${p.nombre}</b></td><td>${p.tipo||'—'}</td><td>${p.direccion||'—'}</td>
     <td class="muted">${p.ambientes||'—'}</td><td>${p.montoBase?fmt(p.montoBase):'—'}</td>
     <td><span class="badge ${p.estado==='ocupado'?'badge-blue':'badge-green'}">${p.estado==='ocupado'?'Ocupado':'Libre'}</span></td>
-    <td><button class="btn-icon del" onclick="eliminar('propiedades','${p.id}')">🗑️</button></td></tr>`).join('');
+    <td style="white-space:nowrap"><button class="btn-icon" title="Editar" onclick="editarPropiedad('${p.id}')">✏️</button>
+      <button class="btn-icon del" onclick="eliminar('propiedades','${p.id}')">🗑️</button></td></tr>`).join('');
 };
 
 /* ============ INQUILINOS ============ */
@@ -688,12 +706,18 @@ window.guardarInquilino = async ()=>{
   if(!reqDb()) return;
   const nombre=$('i-nombre').value.trim();
   if(!nombre){ showAlert('Ingresá el nombre'); return; }
-  await addDoc(collection(db,'inquilinos'),{
-    nombre, dni:$('i-dni').value.trim(), telefono:$('i-tel').value.trim(),
-    email:$('i-email').value.trim(), notas:$('i-notas').value.trim(), creado:hoy()
-  });
+  const data={ nombre, dni:$('i-dni').value.trim(), telefono:$('i-tel').value.trim(),
+    email:$('i-email').value.trim(), notas:$('i-notas').value.trim() };
+  if(editId.inq){ await updateDoc(doc(db,'inquilinos',editId.inq), data); editId.inq=null; setBtn('btn-inq','Guardar inquilino'); showAlert('👤 Inquilino actualizado'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'inquilinos'), data); showAlert('👤 Inquilino guardado'); }
   ['i-nombre','i-dni','i-tel','i-email','i-notas'].forEach(id=>$(id).value='');
-  showAlert('👤 Inquilino guardado'); cargarTodo();
+  cargarTodo();
+};
+window.editarInquilino = (id)=>{
+  const i=inquilinosCache.find(x=>x.id===id); if(!i) return;
+  $('i-nombre').value=i.nombre||''; $('i-dni').value=i.dni||''; $('i-tel').value=i.telefono||'';
+  $('i-email').value=i.email||''; $('i-notas').value=i.notas||'';
+  editId.inq=id; setBtn('btn-inq','Actualizar inquilino'); irA('inquilinos');
 };
 window.renderInquilinos = ()=>{
   const tb=$('tbl-inquilinos');
@@ -702,7 +726,8 @@ window.renderInquilinos = ()=>{
   tb.innerHTML=rows.map(i=>`<tr>
     <td><b>${i.nombre}</b></td><td class="muted">${i.dni||'—'}</td><td>${i.telefono||'—'}</td>
     <td class="muted">${i.email||'—'}</td><td class="muted">${i.notas||'—'}</td>
-    <td><button class="btn-icon del" onclick="eliminar('inquilinos','${i.id}')">🗑️</button></td></tr>`).join('');
+    <td style="white-space:nowrap"><button class="btn-icon" title="Editar" onclick="editarInquilino('${i.id}')">✏️</button>
+      <button class="btn-icon del" onclick="eliminar('inquilinos','${i.id}')">🗑️</button></td></tr>`).join('');
 };
 
 /* ============ CONTRATOS ============ */
@@ -713,35 +738,47 @@ window.guardarContrato = async ()=>{
   if(!$('c-inicio').value||!$('c-fin').value){ showAlert('Cargá inicio y fin'); return; }
   const prop=propiedadesCache.find(p=>p.id===propId);
   const inq=inquilinosCache.find(i=>i.id===inqId);
-  await addDoc(collection(db,'contratos'),{
+  const data={
     propiedadId:propId, propiedadNombre:prop?.nombre||'',
     inquilinoId:inqId, inquilinoNombre:inq?.nombre||'',
     fechaInicio:$('c-inicio').value, fechaFin:$('c-fin').value,
     montoMensual:+$('c-monto').value||0, diaVencimiento:+$('c-dia').value||10,
     ajusteMeses:+$('c-ajuste').value||0, deposito:+$('c-deposito').value||0,
-    depositoMoneda:$('c-deposito-moneda').value,
-    estado:'activo', creado:hoy()
-  });
+    depositoMoneda:$('c-deposito-moneda').value
+  };
+  if(editId.cont){ await updateDoc(doc(db,'contratos',editId.cont), data); editId.cont=null; setBtn('btn-cont','Guardar contrato'); showAlert('📄 Contrato actualizado'); }
+  else { data.estado='activo'; data.creado=hoy(); await addDoc(collection(db,'contratos'), data); showAlert('📄 Contrato guardado'); }
   ['c-inicio','c-fin','c-monto','c-dia','c-deposito'].forEach(id=>$(id).value='');
-  showAlert('📄 Contrato guardado'); cargarTodo();
+  cargarTodo();
+};
+window.editarContrato = (id)=>{
+  const c=contratosCache.find(x=>x.id===id); if(!c) return;
+  $('c-prop').value=c.propiedadId||''; $('c-inq').value=c.inquilinoId||'';
+  $('c-inicio').value=c.fechaInicio||''; $('c-fin').value=c.fechaFin||'';
+  $('c-monto').value=c.montoMensual||''; $('c-dia').value=c.diaVencimiento||'';
+  $('c-ajuste').value=String(c.ajusteMeses||0); $('c-deposito').value=c.deposito||'';
+  $('c-deposito-moneda').value=c.depositoMoneda||'ARS';
+  editId.cont=id; setBtn('btn-cont','Actualizar contrato'); irA('contratos');
 };
 window.renderContratos = ()=>{
   const tb=$('tbl-contratos'); const f=$('f-cont-estado').value;
   let rows=[...contratosCache].sort((a,b)=>(b.fechaInicio||'').localeCompare(a.fechaInicio||''));
   if(f) rows=rows.filter(c=>c.estado===f);
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Sin contratos aún</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Sin contratos aún</td></tr>'; return; }
   tb.innerHTML=rows.map(c=>{
     const ad = c.adicionales||[];
     const adHtml = ad.length
-      ? ad.map(a=>`<span class="badge badge-blue" style="margin:1px">${a.nombre}</span>`).join(' ')
+      ? ad.map(a=>`<span class="badge badge-blue" style="margin:1px">${a.nombre} ${fmt(a.monto)}</span>`).join(' ')
       : '<span class="muted">—</span>';
     return `<tr>
     <td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
     <td class="muted">${fechaCorta(c.fechaInicio)}</td><td class="muted">${fechaCorta(c.fechaFin)}</td>
     <td>${fmt(c.montoMensual)}</td>
+    <td class="muted">${c.ajusteMeses?c.ajusteMeses+' meses':'—'}</td>
     <td>${adHtml}</td>
     <td><span class="badge ${c.estado==='activo'?'badge-green':'badge-gray'}">${c.estado==='activo'?'Activo':'Finalizado'}</span></td>
     <td style="white-space:nowrap">
+      <button class="btn-icon" title="Editar" onclick="editarContrato('${c.id}')">✏️</button>
       <button class="btn-icon" title="Ítems adicionales (internet, cochera…)" onclick="abrirAdic('${c.id}')">➕</button>
       <button class="btn-icon" title="${c.estado==='activo'?'Finalizar':'Reactivar'}" onclick="toggleContrato('${c.id}')">${c.estado==='activo'?'🔒':'🔓'}</button>
       <button class="btn-icon del" onclick="eliminar('contratos','${c.id}')">🗑️</button>
@@ -765,10 +802,23 @@ function renderAdicList(){
   const ad=c?.adicionales||[];
   const box=$('adic-list');
   if(!ad.length){ box.innerHTML='<p class="muted" style="font-size:13px">Todavía no hay ítems. Agregá uno abajo (ej: Internet $5000).</p>'; return; }
-  box.innerHTML=ad.map((a,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--panel2);border-radius:9px;margin-bottom:7px">
-    <span><span class="badge badge-blue">${a.nombre}</span> <span class="muted" style="margin-left:6px">sugerido ${fmt(a.monto)}</span></span>
-    <button class="btn-icon del" onclick="quitarAdic(${i})">🗑️</button></div>`).join('');
+  box.innerHTML=ad.map((a,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:var(--panel2);border-radius:9px;margin-bottom:7px">
+    <span class="badge badge-blue">${a.nombre}</span>
+    <span style="display:flex;align-items:center;gap:8px">
+      <input id="adic-monto-${i}" type="number" value="${a.monto||0}" style="width:120px;padding:7px 10px">
+      <button class="btn btn-ghost btn-sm" onclick="actualizarAdic(${i})">Guardar</button>
+      <button class="btn-icon del" onclick="quitarAdic(${i})">🗑️</button>
+    </span></div>`).join('');
 }
+window.actualizarAdic = async (i)=>{
+  const c=contratosCache.find(x=>x.id===_adicId); if(!c) return;
+  const ad=[...(c.adicionales||[])]; if(!ad[i]) return;
+  ad[i]={...ad[i], monto:+$('adic-monto-'+i).value||0};
+  await updateDoc(doc(db,'contratos',_adicId),{adicionales:ad});
+  c.adicionales=ad;
+  renderAdicList(); renderContratos();
+  showAlert('Precio actualizado');
+};
 window.agregarAdic = async ()=>{
   if(!reqDb()) return;
   const nombre=$('adic-nombre').value.trim();
@@ -864,18 +914,36 @@ window.guardarCobro = async ()=>{
   document.querySelectorAll('.co-adic').forEach(inp=>{
     const v=+inp.value||0; if(v>0) adicionales.push({nombre:inp.dataset.nombre, monto:v});
   });
-  await addDoc(collection(db,'cobros'),{
+  const data={
     contratoId:contId, propiedadId:c.propiedadId, propiedadNombre:c.propiedadNombre,
     inquilinoId:c.inquilinoId, inquilinoNombre:c.inquilinoNombre,
     periodo, monto:+$('co-monto').value||0,
     montoAlquiler, montoGastosComunes, adicionales,
-    nro:proximoNro(cobrosCache),
     fechaPago:$('co-fecha').value||hoy(), medio:$('co-medio').value,
-    notas:$('co-notas').value.trim(), creado:hoy()
-  });
+    notas:$('co-notas').value.trim()
+  };
+  if(editId.cobro){ await updateDoc(doc(db,'cobros',editId.cobro), data); editId.cobro=null; setBtn('btn-cobro','Registrar cobro'); showAlert('💰 Cobro actualizado'); }
+  else { data.nro=proximoNro(cobrosCache); data.creado=hoy(); await addDoc(collection(db,'cobros'), data); showAlert('💰 Cobro registrado'); }
   ['co-monto','co-notas'].forEach(id=>$(id).value='');
   $('co-adic-box').innerHTML=''; $('co-desglose').innerHTML='';
-  showAlert('💰 Cobro registrado'); cargarTodo();
+  cargarTodo();
+};
+window.editarCobro = (id)=>{
+  const c=cobrosCache.find(x=>x.id===id); if(!c) return;
+  $('co-contrato').value=c.contratoId||'';
+  autoMonto(); // arma los campos de adicionales del contrato
+  $('co-periodo').value=c.periodo||mesActual();
+  $('co-fecha').value=c.fechaPago||hoy();
+  $('co-medio').value=c.medio||'Efectivo';
+  $('co-notas').value=c.notas||'';
+  // setear montos de adicionales guardados
+  document.querySelectorAll('.co-adic').forEach(inp=>{
+    const g=(c.adicionales||[]).find(a=>a.nombre===inp.dataset.nombre);
+    inp.value = g? g.monto : 0;
+  });
+  recalcCobro();
+  $('co-monto').value=c.monto||0;
+  editId.cobro=id; setBtn('btn-cobro','Actualizar cobro'); irA('cobros');
 };
 window.renderCobros = ()=>{
   const tb=$('tbl-cobros');
@@ -900,7 +968,8 @@ window.renderCobros = ()=>{
       <button class="btn btn-ghost btn-sm" onclick="reciboPDF('${c.id}')">📄 PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="reciboWA('${c.id}')">📱 WA</button>
     </td>
-    <td><button class="btn-icon del" onclick="eliminar('cobros','${c.id}')">🗑️</button></td></tr>`;
+    <td style="white-space:nowrap"><button class="btn-icon" title="Editar" onclick="editarCobro('${c.id}')">✏️</button>
+      <button class="btn-icon del" onclick="eliminar('cobros','${c.id}')">🗑️</button></td></tr>`;
   }).join('');
 };
 
@@ -1051,7 +1120,7 @@ window.guardarGarantia = async ()=>{
   const base={
     contratoId:contId, propiedadId:c.propiedadId, propiedadNombre:c.propiedadNombre,
     inquilinoId:c.inquilinoId, inquilinoNombre:c.inquilinoNombre,
-    tipo, fecha:$('ga-fecha').value||hoy(), notas:$('ga-notas').value.trim(), creado:hoy()
+    tipo, fecha:$('ga-fecha').value||hoy(), notas:$('ga-notas').value.trim()
   };
   let data;
   if(tipo==='conversion'){
@@ -1061,11 +1130,30 @@ window.guardarGarantia = async ()=>{
   } else {
     const monto=+$('ga-monto').value||0;
     if(monto<=0){ showAlert('Ingresá el monto'); return; }
-    data={...base, moneda:$('ga-moneda').value, monto, nro:proximoNro(garantiasCache)};
+    data={...base, moneda:$('ga-moneda').value, monto};
   }
-  await addDoc(collection(db,'garantias'), data);
+  if(editId.gar){
+    await updateDoc(doc(db,'garantias',editId.gar), data); editId.gar=null;
+    setBtn('btn-gar','Registrar movimiento'); showAlert('🔐 Movimiento actualizado');
+  } else {
+    data.creado=hoy();
+    if(tipo!=='conversion') data.nro=proximoNro(garantiasCache);
+    await addDoc(collection(db,'garantias'), data); showAlert('🔐 Movimiento registrado');
+  }
   ['ga-monto','ga-conv-ars','ga-conv-cotiz','ga-conv-usd','ga-notas'].forEach(id=>$(id).value='');
-  showAlert('🔐 Movimiento registrado'); cargarTodo();
+  cargarTodo();
+};
+window.editarGarantia = (id)=>{
+  const m=garantiasCache.find(x=>x.id===id); if(!m) return;
+  $('ga-contrato').value=m.contratoId||'';
+  $('ga-tipo').value=m.tipo||'pago'; toggleGaTipo();
+  $('ga-fecha').value=m.fecha||hoy(); $('ga-notas').value=m.notas||'';
+  if(m.tipo==='conversion'){
+    $('ga-conv-ars').value=m.montoARS||''; $('ga-conv-cotiz').value=m.cotizacion||''; $('ga-conv-usd').value=m.montoUSD||'';
+  } else {
+    $('ga-moneda').value=m.moneda||'ARS'; $('ga-monto').value=m.monto||'';
+  }
+  editId.gar=id; setBtn('btn-gar','Actualizar movimiento'); irA('garantias');
 };
 
 window.renderGarantias = ()=>{
@@ -1121,7 +1209,8 @@ window.renderGarantias = ()=>{
       <td class="muted">${fechaCorta(m.fecha)}</td><td><b>${m.propiedadNombre}</b></td><td>${m.inquilinoNombre}</td>
       <td>${tipoBadge}</td><td>${detalle}</td>
       <td style="white-space:nowrap">${comp}</td>
-      <td><button class="btn-icon del" onclick="eliminar('garantias','${m.id}')">🗑️</button></td></tr>`;
+      <td style="white-space:nowrap"><button class="btn-icon" title="Editar" onclick="editarGarantia('${m.id}')">✏️</button>
+        <button class="btn-icon del" onclick="eliminar('garantias','${m.id}')">🗑️</button></td></tr>`;
   }).join('');
 };
 
@@ -1188,8 +1277,13 @@ function addMonths(dateStr, n){
 // Fecha del próximo ajuste de un contrato (Date) o null si no corresponde
 function proximoAjuste(c){
   if(!c.ajusteMeses || !c.fechaInicio) return null;
-  const n=(c.ajustes||[]).length;
-  const prox=addMonths(c.fechaInicio,(n+1)*c.ajusteMeses);
+  const ajustes=c.ajustes||[];
+  // base = fecha del último ajuste registrado; si no hay, la fecha de inicio
+  const base = ajustes.length
+    ? ajustes.reduce((mx,a)=> (a.fecha||'')>mx ? a.fecha : mx, ajustes[0].fecha||c.fechaInicio)
+    : c.fechaInicio;
+  if(!base) return null;
+  const prox=addMonths(base, c.ajusteMeses);
   if(c.fechaFin){ const fin=new Date(c.fechaFin+'T00:00:00'); if(prox>fin) return null; }
   return prox;
 }
@@ -1202,8 +1296,10 @@ window.ajInfo = ()=>{
   if(!c){ info.innerHTML=''; return; }
   const prox=proximoAjuste(c);
   if(prox) $('aj-fecha').value=toISO(prox); else $('aj-fecha').value=hoy();
+  const nAj=(c.ajustes||[]).length;
   info.innerHTML=`Monto actual: <b>${fmt(c.montoMensual)}</b> · Frecuencia: ${c.ajusteMeses?c.ajusteMeses+' meses':'sin ajuste'}`+
-    (prox?` · Próximo según contrato: <b>${fechaCorta(toISO(prox))}</b>`:'');
+    (prox?` · Próximo sugerido: <b>${fechaCorta(toISO(prox))}</b>`:'')+
+    `<br><span style="color:var(--text3)">La fecha "Vigente desde" es editable. Cargá la fecha real del aumento; el próximo ajuste se calculará a partir de esa fecha.${nAj?'':' (Si el inquilino ya tuvo aumentos, registrá el último con su fecha real y el monto actual.)'}</span>`;
 };
 window.ajDesdePct = ()=>{
   const c=contratosCache.find(x=>x.id===$('aj-contrato').value); if(!c) return;
@@ -1252,15 +1348,43 @@ window.renderAjustes = ()=>{
 
   // historial
   const th=$('tbl-aj-hist');
-  const hist=[];
+  const fDesde=$('f-ajh-desde').value, fHasta=$('f-ajh-hasta').value, fInq=$('f-ajh-inq').value;
+  let hist=[];
   contratosCache.forEach(c=>(c.ajustes||[]).forEach((a,idx)=>hist.push({c,a,idx})));
+  if(fInq) hist=hist.filter(({c})=>c.inquilinoId===fInq);
+  if(fDesde) hist=hist.filter(({a})=>(a.fecha||'')>=fDesde);
+  if(fHasta) hist=hist.filter(({a})=>(a.fecha||'')<=fHasta);
   hist.sort((x,y)=>(y.a.fecha||'').localeCompare(x.a.fecha||''));
-  if(!hist.length){ th.innerHTML='<tr><td colspan="7" class="empty">Sin ajustes registrados</td></tr>'; return; }
+  if(!hist.length){ th.innerHTML='<tr><td colspan="7" class="empty">Sin ajustes para el filtro elegido</td></tr>'; return; }
   th.innerHTML=hist.map(({c,a,idx})=>`<tr>
     <td class="muted">${fechaCorta(a.fecha)}</td><td><b>${c.propiedadNombre}</b></td><td>${c.inquilinoNombre}</td>
     <td class="muted">${fmt(a.montoAnterior)}</td><td><b>${fmt(a.montoNuevo)}</b></td>
     <td><span class="badge badge-blue">+${a.porcentaje}%</span></td>
-    <td><button class="btn btn-ghost btn-sm" onclick="avisarAjusteWA('${c.id}',${idx})">📱 WA</button></td></tr>`).join('');
+    <td style="white-space:nowrap">
+      <button class="btn btn-ghost btn-sm" onclick="avisarAjusteWA('${c.id}',${idx})">📱 WA</button>
+      <button class="btn-icon del" title="Eliminar ajuste" onclick="eliminarAjuste('${c.id}',${idx})">🗑️</button></td></tr>`).join('');
+};
+window.limpiarFiltroAjustes = ()=>{
+  $('f-ajh-desde').value=''; $('f-ajh-hasta').value=''; $('f-ajh-inq').value='';
+  renderAjustes();
+};
+window.eliminarAjuste = async (contratoId, idx)=>{
+  if(rolActual!=='editor') return;
+  const c=contratosCache.find(x=>x.id===contratoId); if(!c) return;
+  const ajustes=[...(c.ajustes||[])];
+  const elim=ajustes[idx]; if(!elim) return;
+  if(!confirm(`¿Eliminar el ajuste del ${fechaCorta(elim.fecha)} (${fmt(elim.montoAnterior)} → ${fmt(elim.montoNuevo)})?\n\nEl alquiler volverá al valor anterior a este ajuste.`)) return;
+  ajustes.splice(idx,1);
+  // alquiler vigente = monto del ajuste más reciente por fecha que quede; si no queda ninguno, el monto anterior al eliminado
+  let nuevoMensual;
+  if(ajustes.length){
+    const ult=[...ajustes].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).pop();
+    nuevoMensual=ult.montoNuevo;
+  } else {
+    nuevoMensual=elim.montoAnterior;
+  }
+  await updateDoc(doc(db,'contratos',contratoId),{ajustes, montoMensual:nuevoMensual});
+  showAlert(`🗑️ Ajuste eliminado · alquiler ${fmt(nuevoMensual)}`); cargarTodo();
 };
 
 // dashboard: ajustes próximos a 60 días
@@ -1309,13 +1433,20 @@ window.guardarGasto = async ()=>{
   const prorr = $('g-prorrateado').value==='si';
   const dom = prorr ? $('g-domicilio').value : '';
   if(prorr && !dom){ showAlert('Elegí el domicilio a prorratear'); return; }
-  await addDoc(collection(db,'gastos'),{
-    fecha:$('g-fecha').value||hoy(), item:$('g-item').value.trim(),
-    monto:+$('g-monto').value||0, prorrateado:prorr, domicilio:dom, creado:hoy()
-  });
+  const data={ fecha:$('g-fecha').value||hoy(), item:$('g-item').value.trim(),
+    monto:+$('g-monto').value||0, prorrateado:prorr, domicilio:dom };
+  if(editId.gasto){ await updateDoc(doc(db,'gastos',editId.gasto), data); editId.gasto=null; setBtn('btn-gasto','Registrar gasto'); showAlert('🧾 Gasto actualizado'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'gastos'), data); showAlert('🧾 Gasto registrado'); }
   ['g-item','g-monto'].forEach(id=>$(id).value='');
   $('g-prorrateado').value='no'; toggleDomicilio();
-  showAlert('🧾 Gasto registrado'); cargarTodo();
+  cargarTodo();
+};
+window.editarGasto = (id)=>{
+  const g=gastosCache.find(x=>x.id===id); if(!g) return;
+  $('g-fecha').value=g.fecha||hoy(); $('g-item').value=g.item||g.descripcion||'';
+  $('g-monto').value=g.monto||''; $('g-prorrateado').value=g.prorrateado?'si':'no'; toggleDomicilio();
+  if(g.prorrateado) $('g-domicilio').value=g.domicilio||'';
+  editId.gasto=id; setBtn('btn-gasto','Actualizar gasto'); irA('gastos');
 };
 window.renderGastos = ()=>{
   const tb=$('tbl-gastos');
@@ -1332,7 +1463,8 @@ window.renderGastos = ()=>{
     <td>${fmt(g.monto)}</td>
     <td>${g.prorrateado?'<span class="badge badge-blue">Sí</span>':'<span class="badge badge-gray">No</span>'}</td>
     <td class="muted">${g.prorrateado?(g.domicilio||'—'):'—'}</td>
-    <td><button class="btn-icon del" onclick="eliminar('gastos','${g.id}')">🗑️</button></td></tr>`;
+    <td style="white-space:nowrap"><button class="btn-icon" title="Editar" onclick="editarGasto('${g.id}')">✏️</button>
+      <button class="btn-icon del" onclick="eliminar('gastos','${g.id}')">🗑️</button></td></tr>`;
   }).join('') + `<tr style="border-top:2px solid var(--accent)">
     <td colspan="2" style="text-align:right"><b>TOTAL</b></td>
     <td><b style="color:var(--accent)">${fmt(total)}</b></td><td colspan="3"></td></tr>`;
@@ -1534,6 +1666,7 @@ function llenarSelects(){
   const optsI=inqs.map(i=>`<option value="${i.id}">${i.nombre}</option>`).join('');
   if($('c-prop')) $('c-prop').innerHTML='<option value="">Elegir…</option>'+optsP;
   if($('c-inq'))  $('c-inq').innerHTML='<option value="">Elegir…</option>'+optsI;
+  if($('f-ajh-inq')) $('f-ajh-inq').innerHTML='<option value="">Todos los inquilinos</option>'+optsI;
 
   // Domicilios únicos (direcciones de propiedades) para prorrateo
   const domicilios=[...new Set(propiedadesCache.map(p=>(p.direccion||'').trim()).filter(Boolean))].sort();
