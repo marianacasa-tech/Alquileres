@@ -197,6 +197,7 @@ body.lectura .btn-icon{display:none !important}
   <button class="tab" data-view="inquilinos">👥 Inquilinos</button>
   <button class="tab" data-view="contratos">📄 Contratos</button>
   <button class="tab" data-view="cobros">💰 Cobros</button>
+  <button class="tab" data-view="avisos">📩 Avisos</button>
   <button class="tab" data-view="garantias">🔐 Garantías</button>
   <button class="tab" data-view="ajustes">📈 Ajustes</button>
   <button class="tab" data-view="gastos">🧾 Gastos</button>
@@ -504,6 +505,24 @@ body.lectura .btn-icon{display:none !important}
   </div>
 </section>
 
+<!-- ============ AVISOS ============ -->
+<section id="avisos" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>📩 Avisos de pago por inquilino</h2></div>
+    <div class="filters">
+      <label style="margin:0;align-self:center">Período a avisar:</label>
+      <input id="av-periodo" type="month" onchange="renderAvisos()">
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:8px">Se incluye alquiler vigente + gastos comunes del mes anterior + adicionales. El botón abre WhatsApp con el detalle listo para enviar.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Inquilino</th><th>Propiedad</th><th>Alquiler</th><th>Gastos com.</th><th>Adicionales</th><th>Total</th><th>Vence</th><th>Novedades</th><th></th></tr></thead>
+        <tbody id="tbl-avisos"><tr><td colspan="9" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <!-- ============ USUARIOS ============ -->
 <section id="usuarios" class="view">
   <div class="panel">
@@ -615,6 +634,8 @@ const hoy = () => new Date().toISOString().slice(0,10);
 const mesActual = () => new Date().toISOString().slice(0,7);
 const fechaCorta = d => d ? d.split('-').reverse().join('/') : '—';
 const periodoLargo = p => { if(!p) return '—'; const [y,m]=p.split('-'); const ms=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return ms[+m]+' '+y; };
+// mes anterior a un período 'YYYY-MM'
+const mesAnterior = p => { if(!p) return p; let [y,m]=p.split('-').map(Number); m-=1; if(m<1){ m=12; y-=1; } return `${y}-${String(m).padStart(2,'0')}`; };
 
 function showAlert(msg){
   const a=$('alert'); a.textContent=msg; a.classList.add('show');
@@ -665,7 +686,7 @@ function renderAll(){
   renderPropiedades(); renderInquilinos(); renderContratos();
   renderCobros(); renderGastos(); renderGarantias();
   renderAjustes(); renderDashboard(); renderDashAjustes();
-  renderLiquidaciones();
+  renderLiquidaciones(); renderAvisos();
   llenarSelects();
 }
 
@@ -847,10 +868,13 @@ window.toggleContrato = async (id)=>{
 
 /* ============ COBROS ============ */
 /* ---- PRORRATEO DE GASTOS COMUNES ---- */
+// normaliza direcciones: ignora mayúsculas y espacios sobrantes
+const normDir = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
 // Unidades ocupadas (contratos activos) en un domicilio
 function unidadesOcupadasEnDomicilio(dom){
   if(!dom) return 0;
-  const ids = propiedadesCache.filter(p=>(p.direccion||'').trim()===dom.trim()).map(p=>p.id);
+  const nd=normDir(dom);
+  const ids = propiedadesCache.filter(p=>normDir(p.direccion)===nd).map(p=>p.id);
   return contratosCache.filter(c=>c.estado==='activo' && ids.includes(c.propiedadId)).length;
 }
 // Cuota de gastos comunes que le toca a un contrato en un período (YYYY-MM)
@@ -860,11 +884,13 @@ function gastosComunesContrato(contratoId, periodo){
   const prop = propiedadesCache.find(p=>p.id===c.propiedadId);
   const dom = (prop?.direccion||'').trim();
   if(!dom) return 0;
+  const nd=normDir(dom);
   const divisor = unidadesOcupadasEnDomicilio(dom);
   if(divisor<=0) return 0;
+  const periodoGastos = mesAnterior(periodo); // se cobran los gastos del mes anterior (vencido)
   const totalDom = gastosCache.filter(g=>g.prorrateado &&
-      (g.domicilio||'').trim()===dom &&
-      (g.fecha||'').slice(0,7)===periodo)
+      normDir(g.domicilio)===nd &&
+      (g.fecha||'').slice(0,7)===periodoGastos)
     .reduce((s,g)=>s+(g.monto||0),0);
   return Math.round(totalDom/divisor);
 }
@@ -897,7 +923,7 @@ window.recalcCobro = ()=>{
   $('co-monto').value=total;
   const dom=(propiedadesCache.find(p=>p.id===c.propiedadId)?.direccion||'').trim();
   des.innerHTML = `Alquiler ${fmt(alquiler)}`+
-    (comunes>0?` + Gastos comunes ${fmt(comunes)} <span style="color:var(--text3)">(${unidadesOcupadasEnDomicilio(dom)} unid.)</span>`:'')+
+    (comunes>0?` + Gastos comunes ${fmt(comunes)} <span style="color:var(--text3)">(${unidadesOcupadasEnDomicilio(dom)} unid. · gastos de ${periodoLargo(mesAnterior(periodo))})</span>`:'')+
     adicTxt+
     ` = <b style="color:var(--accent)">Total ${fmt(total)}</b>`;
 };
@@ -1453,7 +1479,7 @@ window.renderGastos = ()=>{
   const fp=$('f-gasto-periodo').value, fdom=$('f-gasto-dom').value;
   let rows=[...gastosCache].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(fp) rows=rows.filter(g=>(g.fecha||'').slice(0,7)===fp);
-  if(fdom) rows=rows.filter(g=>(g.domicilio||'').trim()===fdom);
+  if(fdom) rows=rows.filter(g=>normDir(g.domicilio)===normDir(fdom));
   if(!rows.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Sin gastos registrados</td></tr>'; return; }
   const total=rows.reduce((s,g)=>s+(g.monto||0),0);
   tb.innerHTML=rows.map(g=>{
@@ -1476,12 +1502,12 @@ window.extractoProrrateados = ()=>{
   const domFiltro = $('f-gasto-dom').value;
   // gastos prorrateados del período
   let movs = gastosCache.filter(g=>g.prorrateado && (g.fecha||'').slice(0,7)===periodo);
-  if(domFiltro) movs = movs.filter(g=>(g.domicilio||'').trim()===domFiltro);
+  if(domFiltro) movs = movs.filter(g=>normDir(g.domicilio)===normDir(domFiltro));
   if(!movs.length){ showAlert('No hay gastos prorrateados en ese período/domicilio'); return; }
 
-  // agrupar por domicilio
-  const porDom={};
-  movs.forEach(g=>{ const d=(g.domicilio||'').trim(); (porDom[d]=porDom[d]||[]).push(g); });
+  // agrupar por domicilio (normalizado, mostrando un representante legible)
+  const porDom={}, rep={};
+  movs.forEach(g=>{ const k=normDir(g.domicilio); if(!rep[k]) rep[k]=(g.domicilio||'').trim(); (porDom[k]=porDom[k]||[]).push(g); });
 
   const { jsPDF }=window.jspdf; const d=new jsPDF();
   const M=20, R=190;
@@ -1489,10 +1515,11 @@ window.extractoProrrateados = ()=>{
   const check=(h)=>{ if(y+h>270){ d.addPage(); y=24; } };
   y+=2;
 
-  Object.keys(porDom).sort().forEach(dom=>{
-    const gastos=porDom[dom].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  Object.keys(porDom).sort().forEach(k=>{
+    const dom=rep[k];
+    const gastos=porDom[k].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
     const totalDom=gastos.reduce((s,g)=>s+(g.monto||0),0);
-    const unidades=propiedadesCache.filter(p=>(p.direccion||'').trim()===dom);
+    const unidades=propiedadesCache.filter(p=>normDir(p.direccion)===k);
     const ocupados=contratosCache.filter(c=>c.estado==='activo' && unidades.some(p=>p.id===c.propiedadId));
     const divisor=ocupados.length;
     const cuota = divisor>0 ? Math.round(totalDom/divisor) : 0;
@@ -1609,6 +1636,62 @@ window.liquidacionPDF = (id)=>{
   d.save(`Liquidacion_${mes}.pdf`);
 };
 
+/* ============ AVISOS DE PAGO ============ */
+function detalleAPagar(c, periodo){
+  const alquiler = c.montoMensual||0;
+  const comunes = gastosComunesContrato(c.id, periodo);
+  const adic = (c.adicionales||[]).map(a=>({nombre:a.nombre, monto:a.monto||0}));
+  const totalAdic = adic.reduce((s,a)=>s+a.monto,0);
+  return { alquiler, comunes, adic, total: alquiler+comunes+totalAdic };
+}
+window.renderAvisos = ()=>{
+  const tb=$('tbl-avisos'); if(!tb) return;
+  const periodo=$('av-periodo').value || mesActual();
+  const hoyD=new Date(); hoyD.setHours(0,0,0,0);
+  const activos=contratosCache.filter(c=>c.estado==='activo')
+    .sort((a,b)=>(a.inquilinoNombre||'').localeCompare(b.inquilinoNombre||''));
+  if(!activos.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Sin contratos activos</td></tr>'; return; }
+  tb.innerHTML=activos.map(c=>{
+    const d=detalleAPagar(c, periodo);
+    const aumento=(c.ajustes||[]).find(a=>(a.fecha||'').slice(0,7)===periodo);
+    let diasVence=null;
+    if(c.fechaFin){ const fin=new Date(c.fechaFin+'T00:00:00'); diasVence=Math.ceil((fin-hoyD)/86400000); }
+    const nov=[];
+    if(aumento) nov.push('<span class="badge badge-blue">Aumento</span>');
+    if(diasVence!=null && diasVence>=0 && diasVence<=60) nov.push(`<span class="badge badge-amber">Vence en ${diasVence}d</span>`);
+    if(diasVence!=null && diasVence<0) nov.push('<span class="badge badge-red">Vencido</span>');
+    const adicTxt = d.adic.filter(a=>a.monto>0).map(a=>`${a.nombre} ${fmt(a.monto)}`).join('<br>') || '<span class="muted">—</span>';
+    return `<tr>
+      <td><b>${c.inquilinoNombre}</b></td><td>${c.propiedadNombre}</td>
+      <td>${fmt(d.alquiler)}</td>
+      <td class="muted">${d.comunes>0?fmt(d.comunes):'—'}</td>
+      <td class="muted" style="font-size:12.5px">${adicTxt}</td>
+      <td><b style="color:var(--accent)">${fmt(d.total)}</b></td>
+      <td class="muted">día ${c.diaVencimiento||10}</td>
+      <td>${nov.join(' ')||'<span class="muted">—</span>'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="avisoWA('${c.id}')">📱 Enviar</button></td></tr>`;
+  }).join('');
+};
+window.avisoWA = (contratoId)=>{
+  const c=contratosCache.find(x=>x.id===contratoId); if(!c) return;
+  const periodo=$('av-periodo').value || mesActual();
+  const d=detalleAPagar(c, periodo);
+  const inq=inquilinosCache.find(i=>i.id===c.inquilinoId);
+  let tel=(inq?.telefono||'').replace(/\D/g,''); if(tel&&!tel.startsWith('54')) tel='54'+tel;
+  let msg=`Hola ${c.inquilinoNombre}! 👋\n\nTe paso el detalle de tu alquiler de ${c.propiedadNombre} para ${periodoLargo(periodo)}:\n\n`;
+  msg+=`• Alquiler: ${fmt(d.alquiler)}\n`;
+  if(d.comunes>0) msg+=`• Gastos comunes (${periodoLargo(mesAnterior(periodo))}): ${fmt(d.comunes)}\n`;
+  d.adic.forEach(a=>{ if(a.monto>0) msg+=`• ${a.nombre}: ${fmt(a.monto)}\n`; });
+  msg+=`\n*TOTAL A PAGAR: ${fmt(d.total)}*\n`;
+  msg+=`Vencimiento: día ${c.diaVencimiento||10} del mes.\n`;
+  const aumento=(c.ajustes||[]).find(a=>(a.fecha||'').slice(0,7)===periodo);
+  if(aumento) msg+=`\n📈 Te informamos que tu alquiler fue ajustado a ${fmt(aumento.montoNuevo)} a partir del ${fechaCorta(aumento.fecha)}.\n`;
+  if(c.fechaFin){ const fin=new Date(c.fechaFin+'T00:00:00'); const dias=Math.ceil((fin-hoyD0())/86400000); if(dias>=0 && dias<=60) msg+=`\n⚠️ Te recordamos que tu contrato vence el ${fechaCorta(c.fechaFin)}.\n`; }
+  msg+=`\n¡Muchas gracias!`;
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+};
+function hoyD0(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+
 /* ============ DASHBOARD ============ */
 function renderDashboard(){
   const total=propiedadesCache.length;
@@ -1668,8 +1751,13 @@ function llenarSelects(){
   if($('c-inq'))  $('c-inq').innerHTML='<option value="">Elegir…</option>'+optsI;
   if($('f-ajh-inq')) $('f-ajh-inq').innerHTML='<option value="">Todos los inquilinos</option>'+optsI;
 
-  // Domicilios únicos (direcciones de propiedades) para prorrateo
-  const domicilios=[...new Set(propiedadesCache.map(p=>(p.direccion||'').trim()).filter(Boolean))].sort();
+  // Domicilios únicos para prorrateo (agrupados ignorando mayúsculas/espacios)
+  const domMap=new Map(); // normalizado -> representante visible
+  propiedadesCache.forEach(p=>{
+    const t=(p.direccion||'').trim(); if(!t) return;
+    const k=normDir(t); if(!domMap.has(k)) domMap.set(k, t);
+  });
+  const domicilios=[...domMap.values()].sort((a,b)=>a.localeCompare(b));
   const optsDom=domicilios.map(d=>{
     const n=unidadesOcupadasEnDomicilio(d);
     return `<option value="${d}">${d}${n?` (${n} ocup.)`:''}</option>`;
@@ -1831,6 +1919,7 @@ $('g-fecha').value=hoy();
 $('ga-fecha').value=hoy();
 $('aj-fecha').value=hoy();
 $('liq-mes').value=mesActual();
+$('av-periodo').value=mesActual();
 renderLiqCalc();
 </script>
 </body>
