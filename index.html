@@ -1085,8 +1085,9 @@ window.reciboPDF = async (id)=>{
   d.save(`Recibo_${c.propiedadNombre}_${c.periodo}.pdf`);
 };
 /* ---- RECIBO WHATSAPP ---- */
-window.reciboWA = (id)=>{
+window.reciboWA = async (id)=>{
   const c=cobrosCache.find(x=>x.id===id); if(!c) return;
+  await reciboPDF(id); // descarga el PDF para adjuntarlo
   const inq=inquilinosCache.find(i=>i.id===c.inquilinoId);
   let tel=(inq?.telefono||'').replace(/\D/g,'');
   if(tel && !tel.startsWith('54')) tel='54'+tel;
@@ -1104,7 +1105,8 @@ window.reciboWA = (id)=>{
     lineaCom+
     lineaAdic+
     `*Total recibido: ${fmt(c.monto)}*%0A%0A`+
-    `¡Gracias!`;
+    `Te adjunto el recibo en PDF 📎%0A¡Gracias!`;
+  showAlert('📎 Recibo descargado — adjuntalo en WhatsApp con el clip');
   window.open(`https://wa.me/${tel}?text=${msg}`,'_blank');
 };
 
@@ -1274,9 +1276,10 @@ window.reciboGar = async (id)=>{
   d.save(`${esDev?'Devolucion':'Recibo_deposito'}_${m.propiedadNombre}_${m.fecha}.pdf`);
 };
 /* ---- RECIBO / COMPROBANTE DE GARANTÍA (WhatsApp) ---- */
-window.reciboGarWA = (id)=>{
+window.reciboGarWA = async (id)=>{
   const m=garantiasCache.find(x=>x.id===id); if(!m||m.tipo==='conversion') return;
   const esDev=m.tipo==='devolucion';
+  await reciboGar(id); // descarga el PDF para adjuntarlo
   const inq=inquilinosCache.find(i=>i.id===m.inquilinoId);
   let tel=(inq?.telefono||'').replace(/\D/g,'');
   if(tel && !tel.startsWith('54')) tel='54'+tel;
@@ -1292,7 +1295,8 @@ window.reciboGarWA = (id)=>{
     `Fecha: ${fechaCorta(m.fecha)}%0A%0A`+
     `*${esDev?'Monto devuelto':'Monto recibido'}: ${fmtCur(m.monto,m.moneda)}*%0A`;
   if(!esDev && acordado) msg+=`Acordado: ${fmtCur(acordado,monAc)} · Pagado: ${fmtCur(pagEnMon,monAc)} · Pendiente: ${fmtCur(pend,monAc)}%0A`;
-  msg+=`%0A¡Gracias!`;
+  msg+=`%0ATe adjunto el comprobante en PDF 📎%0A¡Gracias!`;
+  showAlert('📎 Comprobante descargado — adjuntalo en WhatsApp con el clip');
   window.open(`https://wa.me/${tel}?text=${msg}`,'_blank');
 };
 
