@@ -453,7 +453,7 @@ body.lectura .btn-icon{display:none !important}
     <div class="panel-head"><h2>➕ Registrar gasto</h2></div>
     <div class="grid">
       <div class="field"><label>Fecha</label><input id="g-fecha" type="date"></div>
-      <div class="field"><label>Ítem *</label><input id="g-item" placeholder="Ej: Expensas, ABL, limpieza…"></div>
+      <div class="field"><label>Ítem *</label><input id="g-item" list="g-item-opts" placeholder="Ej: Expensas, ABL, limpieza…" autocomplete="off"><datalist id="g-item-opts"></datalist></div>
       <div class="field"><label>Monto ($) *</label><input id="g-monto" type="number" placeholder="0"></div>
       <div class="field"><label>¿Prorrateado?</label>
         <select id="g-prorrateado" onchange="toggleDomicilio()"><option value="no">No</option><option value="si">Sí — gasto común</option></select></div>
@@ -868,8 +868,10 @@ window.toggleContrato = async (id)=>{
 
 /* ============ COBROS ============ */
 /* ---- PRORRATEO DE GASTOS COMUNES ---- */
-// normaliza direcciones: ignora mayúsculas y espacios sobrantes
-const normDir = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+// normaliza direcciones: ignora mayúsculas, acentos y espacios sobrantes
+const normDir = s => (s||'').trim().toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/\s+/g,' ');
 // Unidades ocupadas (contratos activos) en un domicilio
 function unidadesOcupadasEnDomicilio(dom){
   if(!dom) return 0;
@@ -1480,6 +1482,13 @@ window.editarGasto = (id)=>{
 };
 window.renderGastos = ()=>{
   const tb=$('tbl-gastos');
+  // sugerencias de ítems ya cargados (para autocompletar)
+  const dl=$('g-item-opts');
+  if(dl){
+    const items=[...new Set(gastosCache.map(g=>(g.item||g.descripcion||'').trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b));
+    dl.innerHTML=items.map(i=>`<option value="${i.replace(/"/g,'&quot;')}"></option>`).join('');
+  }
   const fp=$('f-gasto-periodo').value, fdom=$('f-gasto-dom').value;
   let rows=[...gastosCache].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(fp) rows=rows.filter(g=>(g.fecha||'').slice(0,7)===fp);
