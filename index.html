@@ -150,6 +150,13 @@ header .brand{position:relative}
   background:var(--blue-bg);border:1px solid var(--blue);color:var(--text);border-radius:12px;font-size:13px;font-weight:600}
 body.lectura #lectura-banner{display:block}
 body.lectura .btn-icon{display:none !important}
+
+/* SELECTOR DE GRUPO */
+.grupo-sel{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--accent);
+  padding:8px 14px;border-radius:12px;font-size:13px}
+.grupo-sel label{margin:0;color:var(--text2);font-size:12px}
+.grupo-sel select{background:transparent;border:none;color:var(--accent);font-weight:700;padding:2px 6px;font-family:inherit;font-size:13.5px}
+.grupo-sel select:focus{outline:none}
 </style>
 </head>
 <body>
@@ -179,6 +186,10 @@ body.lectura .btn-icon{display:none !important}
       </div>
     </div>
     <div class="user-box" id="user-box" style="display:none">
+      <div class="grupo-sel" id="grupo-box" style="display:none">
+        <label>🗂️ Grupo:</label>
+        <select id="grupo-sel" onchange="cambiarGrupo()"></select>
+      </div>
       <div class="uinfo"><b id="u-nombre">—</b><span id="u-rol" class="muted"></span></div>
       <button class="btn btn-ghost btn-sm" onclick="hacerLogout()">Salir</button>
     </div>
@@ -203,6 +214,7 @@ body.lectura .btn-icon{display:none !important}
   <button class="tab" data-view="gastos">🧾 Gastos</button>
   <button class="tab" data-view="liquidacion">💵 Liquidación</button>
   <button class="tab" data-view="usuarios" id="tab-usuarios" style="display:none">👤 Usuarios</button>
+  <button class="tab" data-view="grupos" id="tab-grupos" style="display:none">🗂️ Grupos</button>
 </nav>
 
 <main>
@@ -531,18 +543,42 @@ body.lectura .btn-icon{display:none !important}
       <div class="field"><label>Nombre</label><input id="us-nombre" placeholder="Nombre y apellido"></div>
       <div class="field"><label>Email *</label><input id="us-email" type="email" placeholder="persona@email.com"></div>
       <div class="field"><label>Contraseña *</label><input id="us-pass" type="password" placeholder="Mínimo 6 caracteres"></div>
-      <div class="field"><label>Rol *</label>
-        <select id="us-rol"><option value="editor">Editor (puede modificar)</option><option value="lector">Lector (solo lectura)</option></select></div>
+      <div class="field" style="grid-column:1/-1"><label>¿Es administradora general del sistema?</label>
+        <select id="us-admin"><option value="no">No — sus permisos dependen del grupo</option><option value="si">Sí — Admin (gestiona usuarios y grupos, ve todos los grupos)</option></select></div>
+      <div class="field" style="grid-column:1/-1"><label>Rol por grupo</label>
+        <div id="us-roles" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div></div>
     </div>
-    <p class="muted" style="margin-top:12px;font-size:12.5px">💡 Al crear el usuario se genera su cuenta de acceso. Después podrá ingresar con ese email y contraseña.</p>
-    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarUsuario()">Crear usuario</button></div>
+    <p class="muted" style="margin-top:12px;font-size:12.5px">💡 En "Rol por grupo" indicá si en cada grupo la persona <b>edita</b>, <b>solo lee</b> o <b>no accede</b>. Podés combinar: editor en un grupo y lector en otro.</p>
+    <div style="margin-top:16px"><button id="btn-user" class="btn btn-primary" onclick="guardarUsuario()">Crear usuario</button></div>
   </div>
   <div class="panel">
     <div class="panel-head"><h2>👤 Usuarios con acceso</h2></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th></th></tr></thead>
-        <tbody id="tbl-usuarios"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Admin</th><th>Roles por grupo</th><th></th></tr></thead>
+        <tbody id="tbl-usuarios"><tr><td colspan="5" class="loading">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GRUPOS ============ -->
+<section id="grupos" class="view">
+  <div class="panel">
+    <div class="panel-head"><h2>➕ Nuevo grupo</h2></div>
+    <div class="grid">
+      <div class="field"><label>Nombre del grupo *</label><input id="gr-nombre" placeholder="Ej: Edificio Rondeau, Propiedades del socio X…"></div>
+      <div class="field"><label>Notas</label><input id="gr-notas" placeholder="Descripción interna"></div>
+    </div>
+    <p class="muted" style="margin-top:12px;font-size:12.5px">💡 Un grupo es una unidad de administración independiente: sus propiedades, cobros, gastos y liquidación no se mezclan con otras. Después asigná qué usuarios acceden a cada grupo desde 👤 Usuarios.</p>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="guardarGrupo()">Crear grupo</button></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>🗂️ Grupos existentes</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Notas</th><th>Usuarios con acceso</th><th></th></tr></thead>
+        <tbody id="tbl-grupos"><tr><td colspan="4" class="loading">Cargando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -583,7 +619,7 @@ body.lectura .btn-icon{display:none !important}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, updateDoc, setDoc, getDoc, doc, query, orderBy }
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, updateDoc, setDoc, getDoc, doc, onSnapshot, query, orderBy }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -616,7 +652,14 @@ try {
   }
 } catch(e){ document.getElementById('cfg-warn').style.display='block'; console.error(e); }
 
-let rolActual='lector', emailActual='', usuariosCache=[];
+let rolActual='lector', esAdmin=false, emailActual='', usuariosCache=[];
+// roles del usuario logueado, por grupo: { grupoId: 'editor'|'lector' }
+let rolesUsuario = {};
+// devuelve el rol efectivo del usuario en el grupo activo
+function rolEnGrupo(grupoId){
+  if(esAdmin) return 'admin';
+  return rolesUsuario[grupoId] || 'sin_acceso';
+}
 
 /* ---------- CACHÉS ---------- */
 let propiedadesCache = [];
@@ -626,6 +669,9 @@ let cobrosCache = [];
 let gastosCache = [];
 let garantiasCache = [];
 let liquidacionesCache = [];
+let gruposCache = [];
+let grupoActivo = null; // id del grupo actualmente seleccionado
+let gruposUsuario = []; // ids de grupos a los que este usuario accede
 
 /* ---------- HELPERS ---------- */
 const $ = id => document.getElementById(id);
@@ -647,6 +693,8 @@ function reqDb(){ if(!db){ showAlert('⚠️ Configurá Firebase primero'); retu
 const editId = {prop:null, inq:null, cont:null, cobro:null, gar:null, gasto:null};
 function setBtn(id, txt){ const b=$(id); if(b) b.textContent=txt; }
 function irA(view){ const t=document.querySelector(`.tab[data-view="${view}"]`); if(t) t.click(); window.scrollTo({top:0,behavior:'smooth'}); }
+// agrega grupoId al registro que se crea
+function conGrupo(data){ return { ...data, grupoId: grupoActivo || 'default' }; }
 
 /* ---------- NAVEGACIÓN ---------- */
 document.querySelectorAll('.tab').forEach(t=>{
@@ -658,25 +706,39 @@ document.querySelectorAll('.tab').forEach(t=>{
   };
 });
 
-/* ============ CARGA GENERAL ============ */
+/* ============ CARGA GENERAL (tiempo real) ============ */
+let listenersOn=false, unsubs=[];
+// caches "crudos" con todos los datos (sin filtrar por grupo)
+const raw = { propiedades:[], inquilinos:[], contratos:[], cobros:[], gastos:[], garantias:[], liquidaciones:[] };
 async function cargarTodo(){
   if(!db) return;
-  const [p,i,c,co,g,ga,liq] = await Promise.all([
-    getDocs(collection(db,'propiedades')),
-    getDocs(collection(db,'inquilinos')),
-    getDocs(collection(db,'contratos')),
-    getDocs(collection(db,'cobros')),
-    getDocs(collection(db,'gastos')),
-    getDocs(collection(db,'garantias')),
-    getDocs(collection(db,'liquidaciones'))
-  ]);
-  propiedadesCache = p.docs.map(d=>({id:d.id,...d.data()}));
-  inquilinosCache  = i.docs.map(d=>({id:d.id,...d.data()}));
-  contratosCache   = c.docs.map(d=>({id:d.id,...d.data()}));
-  cobrosCache      = co.docs.map(d=>({id:d.id,...d.data()}));
-  gastosCache      = g.docs.map(d=>({id:d.id,...d.data()}));
-  garantiasCache   = ga.docs.map(d=>({id:d.id,...d.data()}));
-  liquidacionesCache = liq.docs.map(d=>({id:d.id,...d.data()}));
+  if(listenersOn) return;
+  listenersOn=true;
+  const suscribir=(nombre, key)=> unsubs.push(onSnapshot(collection(db,nombre),
+    snap=>{ raw[key]=snap.docs.map(d=>({id:d.id,...d.data()})); recompute(); },
+    err=>console.error('snapshot '+nombre, err)));
+  suscribir('propiedades','propiedades');
+  suscribir('inquilinos','inquilinos');
+  suscribir('contratos','contratos');
+  suscribir('cobros','cobros');
+  suscribir('gastos','gastos');
+  suscribir('garantias','garantias');
+  suscribir('liquidaciones','liquidaciones');
+  // grupos: colección aparte, no se filtra
+  unsubs.push(onSnapshot(collection(db,'grupos'),
+    snap=>{ gruposCache=snap.docs.map(d=>({id:d.id,...d.data()})); onGruposCambio(); },
+    err=>console.error('snapshot grupos', err)));
+}
+function recompute(){
+  // filtrar por grupo activo (los registros sin grupo se consideran del grupo por defecto)
+  const filtrar = arr => grupoActivo ? arr.filter(x=>(x.grupoId||'default')===grupoActivo) : arr;
+  propiedadesCache = filtrar(raw.propiedades);
+  inquilinosCache  = filtrar(raw.inquilinos);
+  contratosCache   = filtrar(raw.contratos);
+  cobrosCache      = filtrar(raw.cobros);
+  gastosCache      = filtrar(raw.gastos);
+  garantiasCache   = filtrar(raw.garantias);
+  liquidacionesCache = filtrar(raw.liquidaciones);
   // estado ocupado/libre según contratos activos
   const ocupadas = new Set(contratosCache.filter(c=>c.estado==='activo').map(c=>c.propiedadId));
   propiedadesCache.forEach(p=>p.estado = ocupadas.has(p.id)?'ocupado':'libre');
@@ -698,7 +760,7 @@ window.guardarPropiedad = async ()=>{
   const data={ nombre, tipo:$('p-tipo').value, direccion:$('p-dir').value.trim(),
     ambientes:$('p-amb').value.trim(), montoBase:+$('p-monto').value||0, notas:$('p-notas').value.trim() };
   if(editId.prop){ await updateDoc(doc(db,'propiedades',editId.prop), data); editId.prop=null; setBtn('btn-prop','Guardar propiedad'); showAlert('🏢 Propiedad actualizada'); }
-  else { data.creado=hoy(); await addDoc(collection(db,'propiedades'), data); showAlert('🏢 Propiedad guardada'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'propiedades'), conGrupo(data)); showAlert('🏢 Propiedad guardada'); }
   ['p-nombre','p-dir','p-amb','p-monto','p-notas'].forEach(id=>$(id).value='');
   cargarTodo();
 };
@@ -730,7 +792,7 @@ window.guardarInquilino = async ()=>{
   const data={ nombre, dni:$('i-dni').value.trim(), telefono:$('i-tel').value.trim(),
     email:$('i-email').value.trim(), notas:$('i-notas').value.trim() };
   if(editId.inq){ await updateDoc(doc(db,'inquilinos',editId.inq), data); editId.inq=null; setBtn('btn-inq','Guardar inquilino'); showAlert('👤 Inquilino actualizado'); }
-  else { data.creado=hoy(); await addDoc(collection(db,'inquilinos'), data); showAlert('👤 Inquilino guardado'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'inquilinos'), conGrupo(data)); showAlert('👤 Inquilino guardado'); }
   ['i-nombre','i-dni','i-tel','i-email','i-notas'].forEach(id=>$(id).value='');
   cargarTodo();
 };
@@ -768,7 +830,7 @@ window.guardarContrato = async ()=>{
     depositoMoneda:$('c-deposito-moneda').value
   };
   if(editId.cont){ await updateDoc(doc(db,'contratos',editId.cont), data); editId.cont=null; setBtn('btn-cont','Guardar contrato'); showAlert('📄 Contrato actualizado'); }
-  else { data.estado='activo'; data.creado=hoy(); await addDoc(collection(db,'contratos'), data); showAlert('📄 Contrato guardado'); }
+  else { data.estado='activo'; data.creado=hoy(); await addDoc(collection(db,'contratos'), conGrupo(data)); showAlert('📄 Contrato guardado'); }
   ['c-inicio','c-fin','c-monto','c-dia','c-deposito'].forEach(id=>$(id).value='');
   cargarTodo();
 };
@@ -951,7 +1013,7 @@ window.guardarCobro = async ()=>{
     notas:$('co-notas').value.trim()
   };
   if(editId.cobro){ await updateDoc(doc(db,'cobros',editId.cobro), data); editId.cobro=null; setBtn('btn-cobro','Registrar cobro'); showAlert('💰 Cobro actualizado'); }
-  else { data.nro=proximoNro(cobrosCache); data.creado=hoy(); await addDoc(collection(db,'cobros'), data); showAlert('💰 Cobro registrado'); }
+  else { data.nro=proximoNro(cobrosCache); data.creado=hoy(); await addDoc(collection(db,'cobros'), conGrupo(data)); showAlert('💰 Cobro registrado'); }
   ['co-monto','co-notas'].forEach(id=>$(id).value='');
   $('co-adic-box').innerHTML=''; $('co-desglose').innerHTML='';
   cargarTodo();
@@ -1175,7 +1237,7 @@ window.guardarGarantia = async ()=>{
   } else {
     data.creado=hoy();
     if(tipo!=='conversion') data.nro=proximoNro(garantiasCache);
-    await addDoc(collection(db,'garantias'), data); showAlert('🔐 Movimiento registrado');
+    await addDoc(collection(db,'garantias'), conGrupo(data)); showAlert('🔐 Movimiento registrado');
   }
   ['ga-monto','ga-conv-ars','ga-conv-cotiz','ga-conv-usd','ga-notas'].forEach(id=>$(id).value='');
   cargarTodo();
@@ -1408,7 +1470,7 @@ window.limpiarFiltroAjustes = ()=>{
   renderAjustes();
 };
 window.eliminarAjuste = async (contratoId, idx)=>{
-  if(rolActual!=='editor') return;
+  if(rolActual==='lector') return;
   const c=contratosCache.find(x=>x.id===contratoId); if(!c) return;
   const ajustes=[...(c.ajustes||[])];
   const elim=ajustes[idx]; if(!elim) return;
@@ -1475,7 +1537,7 @@ window.guardarGasto = async ()=>{
   const data={ fecha:$('g-fecha').value||hoy(), item:$('g-item').value.trim(),
     monto:+$('g-monto').value||0, prorrateado:prorr, domicilio:dom };
   if(editId.gasto){ await updateDoc(doc(db,'gastos',editId.gasto), data); editId.gasto=null; setBtn('btn-gasto','Registrar gasto'); showAlert('🧾 Gasto actualizado'); }
-  else { data.creado=hoy(); await addDoc(collection(db,'gastos'), data); showAlert('🧾 Gasto registrado'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'gastos'), conGrupo(data)); showAlert('🧾 Gasto registrado'); }
   ['g-item','g-monto'].forEach(id=>$(id).value='');
   $('g-prorrateado').value='no'; toggleDomicilio();
   cargarTodo();
@@ -1631,7 +1693,7 @@ window.guardarLiquidacion = async ()=>{
     await updateDoc(doc(db,'liquidaciones',existe.id),{...r, periodo:r.mes, fecha:hoy()});
     showAlert('💵 Liquidación actualizada');
   } else {
-    await addDoc(collection(db,'liquidaciones'),{...r, periodo:r.mes, fecha:hoy(), creado:hoy()});
+    await addDoc(collection(db,'liquidaciones'),conGrupo({...r, periodo:r.mes, fecha:hoy(), creado:hoy()}));
     showAlert('💵 Liquidación guardada');
   }
   cargarTodo();
@@ -1790,16 +1852,17 @@ function renderDashboard(){
 }
 
 /* ============ SELECTS ============ */
+function setSel(id, html){ const el=$(id); if(!el) return; const v=el.value; el.innerHTML=html; if([...el.options].some(o=>o.value===v)) el.value=v; }
 function llenarSelects(){
   const props=[...propiedadesCache].sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const inqs=[...inquilinosCache].sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const optsP=props.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
   const optsI=inqs.map(i=>`<option value="${i.id}">${i.nombre}</option>`).join('');
-  if($('c-prop')) $('c-prop').innerHTML='<option value="">Elegir…</option>'+optsP;
-  if($('c-inq'))  $('c-inq').innerHTML='<option value="">Elegir…</option>'+optsI;
-  if($('f-ajh-inq')) $('f-ajh-inq').innerHTML='<option value="">Todos los inquilinos</option>'+optsI;
+  setSel('c-prop','<option value="">Elegir…</option>'+optsP);
+  setSel('c-inq','<option value="">Elegir…</option>'+optsI);
+  setSel('f-ajh-inq','<option value="">Todos los inquilinos</option>'+optsI);
 
-  // Domicilios únicos para prorrateo (agrupados ignorando mayúsculas/espacios)
+  // Domicilios únicos para prorrateo (agrupados ignorando mayúsculas/espacios/acentos)
   const domMap=new Map(); // normalizado -> representante visible
   propiedadesCache.forEach(p=>{
     const t=(p.direccion||'').trim(); if(!t) return;
@@ -1810,25 +1873,23 @@ function llenarSelects(){
     const n=unidadesOcupadasEnDomicilio(d);
     return `<option value="${d}">${d}${n?` (${n} ocup.)`:''}</option>`;
   }).join('');
-  if($('g-domicilio')) $('g-domicilio').innerHTML='<option value="">Elegir domicilio…</option>'+optsDom;
-  if($('f-gasto-dom')) $('f-gasto-dom').innerHTML='<option value="">Todos los domicilios</option>'+
-    domicilios.map(d=>`<option value="${d}">${d}</option>`).join('');
+  setSel('g-domicilio','<option value="">Elegir domicilio…</option>'+optsDom);
+  setSel('f-gasto-dom','<option value="">Todos los domicilios</option>'+domicilios.map(d=>`<option value="${d}">${d}</option>`).join(''));
 
   const conts=[...contratosCache].filter(c=>c.estado==='activo')
     .sort((a,b)=>a.propiedadNombre.localeCompare(b.propiedadNombre));
-  if($('co-contrato')) $('co-contrato').innerHTML='<option value="">Elegir contrato…</option>'+
+  const optsContAct='<option value="">Elegir contrato…</option>'+
     conts.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}</option>`).join('');
-  if($('aj-contrato')) $('aj-contrato').innerHTML='<option value="">Elegir contrato…</option>'+
-    conts.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}</option>`).join('');
+  setSel('co-contrato', optsContAct);
+  setSel('aj-contrato', optsContAct);
 
-  // filtro por propiedad en cobros
-  if($('f-cobro-prop')) $('f-cobro-prop').innerHTML='<option value="">Todas las propiedades</option>'+optsP;
+  setSel('f-cobro-prop','<option value="">Todas las propiedades</option>'+optsP);
 
   // contratos para garantías (incluye finalizados, para devoluciones)
   const todosCont=[...contratosCache].sort((a,b)=>a.propiedadNombre.localeCompare(b.propiedadNombre));
   const optsContTodos=todosCont.map(c=>`<option value="${c.id}">${c.propiedadNombre} · ${c.inquilinoNombre}${c.estado!=='activo'?' (finalizado)':''}</option>`).join('');
-  if($('ga-contrato')) $('ga-contrato').innerHTML='<option value="">Elegir contrato…</option>'+optsContTodos;
-  if($('f-gar-contrato')) $('f-gar-contrato').innerHTML='<option value="">Todos los contratos</option>'+optsContTodos;
+  setSel('ga-contrato','<option value="">Elegir contrato…</option>'+optsContTodos);
+  setSel('f-gar-contrato','<option value="">Todos los contratos</option>'+optsContTodos);
 }
 
 /* ============ ELIMINAR ============ */
@@ -1856,7 +1917,10 @@ window.hacerLogin = async ()=>{
       ? 'Email o contraseña incorrectos' : 'No se pudo ingresar';
   }
 };
-window.hacerLogout = async ()=>{ if(auth) await signOut(auth); };
+window.hacerLogout = async ()=>{
+  unsubs.forEach(u=>{ try{ u(); }catch(e){} }); unsubs=[]; listenersOn=false;
+  if(auth) await signOut(auth);
+};
 
 async function onLoginOk(user){
   emailActual=user.email;
@@ -1864,32 +1928,102 @@ async function onLoginOk(user){
   let perfil=null;
   try{ const s=await getDoc(doc(db,'usuarios',user.email)); if(s.exists()) perfil=s.data(); }catch(e){}
   if(!perfil){
-    // usuario autenticado pero sin permisos asignados
     $('login-msg').className='login-msg err';
     $('login-msg').textContent='Tu cuenta no tiene acceso asignado. Avisá al administrador.';
     await signOut(auth);
     return;
   }
-  rolActual = perfil.rol==='editor' ? 'editor' : 'lector';
+  // ADMIN: nuevo campo `admin: true` o compat con rol='admin'
+  esAdmin = perfil.admin===true || perfil.rol==='admin';
+  // ROLES POR GRUPO: nuevo campo `roles` (map grupoId->rol), o compat con `rol` + `grupos`
+  if(perfil.roles && typeof perfil.roles==='object'){
+    rolesUsuario = perfil.roles;
+    gruposUsuario = Object.keys(rolesUsuario);
+  } else {
+    // compat: si era editor/lector con lista de grupos, aplicar ese rol a todos
+    const rolViejo = perfil.rol==='editor' ? 'editor' : 'lector';
+    gruposUsuario = perfil.grupos || ['default'];
+    rolesUsuario = {};
+    gruposUsuario.forEach(g=>rolesUsuario[g]=rolViejo);
+  }
+  if(esAdmin && !gruposUsuario.length){ gruposUsuario=['default']; }
   $('u-nombre').textContent = perfil.nombre || user.email;
-  $('u-rol').textContent = rolActual==='editor' ? 'Editor' : 'Solo lectura';
+  // el texto de rol se actualiza al cambiar de grupo (más abajo)
   $('login-screen').style.display='none';
   $('user-box').style.display='flex';
   $('login-pass').value='';
+  // grupo inicial: el último usado o el primero disponible
+  grupoActivo = localStorage.getItem('grupoActivo_'+emailActual) || gruposUsuario[0] || 'default';
+  if(!gruposUsuario.includes(grupoActivo)) grupoActivo = gruposUsuario[0] || 'default';
+  actualizarRolActual();
   aplicarRol();
   await cargarTodo();
-  if(rolActual==='editor') cargarUsuarios();
+  if(esAdmin) cargarUsuarios();
 }
+// re-renderizar el selector cuando llegan los grupos por snapshot
+function onGruposCambio(){
+  // migración: si no hay grupos aún, crear el "default" y usar sus datos existentes
+  if(!gruposCache.length && (esAdmin||rolActual==='editor') && !window._grupoDefaultCreando){
+    window._grupoDefaultCreando=true;
+    setDoc(doc(db,'grupos','default'),{nombre:'Edificio Rondeau', notas:'Grupo inicial (datos migrados)', creado:hoy()})
+      .catch(e=>console.error(e))
+      .finally(()=>{ window._grupoDefaultCreando=false; });
+  }
+  refrescarSelectorGrupo();
+  renderGrupos();
+  renderUsuarios();
+  // refrescar grilla de roles del formulario si está abierta
+  const cont=$('us-roles');
+  if(cont){
+    const actuales={};
+    cont.querySelectorAll('.us-rol-row').forEach(row=>{
+      const v=row.querySelector('select').value; if(v!=='ninguno') actuales[row.dataset.gid]=v;
+    });
+    poblarRolesGrupo(actuales);
+  }
+}
+function refrescarSelectorGrupo(){
+  const box=$('grupo-box'), sel=$('grupo-sel'); if(!sel) return;
+  const disponibles = gruposCache.filter(g=>gruposUsuario.includes(g.id));
+  if(disponibles.length<=1){
+    box.style.display = disponibles.length===1 ? '' : 'none';
+    if(disponibles.length===1){
+      sel.innerHTML = `<option value="${disponibles[0].id}">${disponibles[0].nombre}</option>`;
+      grupoActivo = disponibles[0].id;
+    }
+  } else {
+    box.style.display='';
+    sel.innerHTML = disponibles.map(g=>`<option value="${g.id}">${g.nombre}</option>`).join('');
+    if(!disponibles.some(g=>g.id===grupoActivo)) grupoActivo = disponibles[0].id;
+    sel.value = grupoActivo;
+  }
+  actualizarRolActual();
+  recompute();
+}
+function actualizarRolActual(){
+  rolActual = rolEnGrupo(grupoActivo);
+  const txt = esAdmin ? 'Admin' : (rolActual==='editor' ? 'Editor' : (rolActual==='lector'?'Solo lectura':'Sin acceso'));
+  const el=$('u-rol'); if(el) el.textContent = txt;
+  aplicarRol();
+}
+window.cambiarGrupo = ()=>{
+  grupoActivo = $('grupo-sel').value;
+  localStorage.setItem('grupoActivo_'+emailActual, grupoActivo);
+  actualizarRolActual();
+  recompute();
+  showAlert('🗂️ Grupo: '+(gruposCache.find(g=>g.id===grupoActivo)?.nombre||grupoActivo));
+};
+
 function aplicarRol(){
-  const lector = rolActual!=='editor';
-  document.body.classList.toggle('lectura', lector);
-  // ocultar paneles con botón de acción (formularios de alta/edición)
+  const lector = rolActual==='lector' || rolActual==='sin_acceso';
+  document.body.classList.toggle('lectura', lector && !esAdmin);
   document.querySelectorAll('main .panel').forEach(p=>{
-    if(p.querySelector('.btn-primary')) p.style.display = lector ? 'none' : '';
+    if(p.querySelector('.btn-primary')) p.style.display = (lector && !esAdmin) ? 'none' : '';
   });
-  // tab de usuarios solo para editores
-  $('tab-usuarios').style.display = lector ? 'none' : '';
-  if(lector && document.querySelector('#usuarios.active')){
+  // Usuarios y Grupos: solo Admin
+  $('tab-usuarios').style.display = esAdmin ? '' : 'none';
+  $('tab-grupos').style.display = esAdmin ? '' : 'none';
+  if(!esAdmin && (document.querySelector('#usuarios.active')||document.querySelector('#grupos.active'))){
     document.querySelector('.tab[data-view="dashboard"]').click();
   }
 }
@@ -1907,57 +2041,159 @@ if(auth){
   $('login-screen').style.display='none'; // sin firebase, no se puede loguear
 }
 
-/* ---- GESTIÓN DE USUARIOS (solo editores) ---- */
+/* ---- GESTIÓN DE USUARIOS (solo admin) ---- */
+let editUsr=null;
 window.guardarUsuario = async ()=>{
-  if(rolActual!=='editor'){ showAlert('Sin permisos'); return; }
+  if(!esAdmin){ showAlert('Sin permisos'); return; }
   const email=$('us-email').value.trim().toLowerCase();
-  const pass=$('us-pass').value, nombre=$('us-nombre').value.trim(), rol=$('us-rol').value;
-  if(!email||!pass){ showAlert('Email y contraseña obligatorios'); return; }
-  if(pass.length<6){ showAlert('La contraseña debe tener 6+ caracteres'); return; }
-  try{
-    // crear cuenta con la app secundaria (no cierra tu sesión)
-    await createUserWithEmailAndPassword(secondaryAuth, email, pass);
-    await signOut(secondaryAuth);
-  }catch(e){
-    if(e.code==='auth/email-already-in-use'){
-      // la cuenta ya existe: solo guardamos/actualizamos el rol
-    } else {
-      showAlert(e.code==='auth/invalid-email'?'Email inválido':'No se pudo crear la cuenta'); return;
+  const pass=$('us-pass').value, nombre=$('us-nombre').value.trim();
+  const admin=$('us-admin').value==='si';
+  // leer roles por grupo del formulario
+  const roles={};
+  document.querySelectorAll('.us-rol-row').forEach(row=>{
+    const gid=row.dataset.gid, r=row.querySelector('select').value;
+    if(r!=='ninguno') roles[gid]=r;
+  });
+  if(!email){ showAlert('Email obligatorio'); return; }
+  if(!admin && Object.keys(roles).length===0){ showAlert('Asigná al menos un grupo con rol editor o lector'); return; }
+  if(!editUsr){
+    if(!pass){ showAlert('Contraseña obligatoria'); return; }
+    if(pass.length<6){ showAlert('La contraseña debe tener 6+ caracteres'); return; }
+    try{
+      await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+      await signOut(secondaryAuth);
+    }catch(e){
+      if(e.code!=='auth/email-already-in-use'){
+        showAlert(e.code==='auth/invalid-email'?'Email inválido':'No se pudo crear la cuenta'); return;
+      }
     }
   }
-  await setDoc(doc(db,'usuarios',email),{nombre, rol, email, creado:hoy()});
+  const grupos=Object.keys(roles);
+  const data={nombre, email, admin, roles, grupos, actualizado:hoy()};
+  if(!editUsr) data.creado=hoy();
+  // limpieza de campos viejos (rol único ya no aplica)
+  data.rol=null;
+  await setDoc(doc(db,'usuarios',email), data, {merge:true});
   ['us-nombre','us-email','us-pass'].forEach(id=>$(id).value='');
-  showAlert('👤 Usuario creado'); cargarUsuarios();
+  $('us-admin').value='no';
+  editUsr=null; setBtn('btn-user','Crear usuario');
+  poblarRolesGrupo({});
+  showAlert('👤 Usuario guardado'); cargarUsuarios();
+  // si me acabo de editar a mí misma, aplicar cambios en vivo
+  if(email===emailActual){
+    esAdmin=!!admin; rolesUsuario=roles; gruposUsuario=grupos.length?grupos:['default'];
+    refrescarSelectorGrupo();
+  }
+};
+window.editarUsuario = (email)=>{
+  const u=usuariosCache.find(x=>x.id===email); if(!u) return;
+  $('us-nombre').value=u.nombre||''; $('us-email').value=u.email||u.id;
+  $('us-pass').value=''; $('us-pass').placeholder='(no se cambia al editar)';
+  $('us-admin').value = (u.admin===true||u.rol==='admin') ? 'si' : 'no';
+  // roles por grupo: nuevo formato o compat con rol único
+  let roles=u.roles;
+  if(!roles){
+    const r = u.rol==='editor'?'editor':'lector';
+    roles={}; (u.grupos||['default']).forEach(g=>roles[g]=r);
+  }
+  poblarRolesGrupo(roles);
+  editUsr=email; setBtn('btn-user','Actualizar usuario'); irA('usuarios');
 };
 async function cargarUsuarios(){
   if(!db) return;
   try{ const s=await getDocs(collection(db,'usuarios')); usuariosCache=s.docs.map(d=>({id:d.id,...d.data()})); }catch(e){ usuariosCache=[]; }
+  poblarRolesGrupo({});
   renderUsuarios();
+}
+// arma la grilla "grupo -> rol" en el formulario
+function poblarRolesGrupo(rolesActuales){
+  const cont=$('us-roles'); if(!cont) return;
+  const grs = gruposCache.length ? gruposCache : [{id:'default',nombre:'Edificio Rondeau'}];
+  cont.innerHTML = grs.map(g=>{
+    const r = rolesActuales[g.id] || 'ninguno';
+    return `<div class="us-rol-row" data-gid="${g.id}" style="display:flex;align-items:center;gap:10px;background:var(--panel2);padding:8px 12px;border-radius:9px">
+      <span style="flex:1"><b>${g.nombre}</b></span>
+      <select style="max-width:180px">
+        <option value="ninguno"${r==='ninguno'?' selected':''}>Sin acceso</option>
+        <option value="editor"${r==='editor'?' selected':''}>Editor</option>
+        <option value="lector"${r==='lector'?' selected':''}>Solo lectura</option>
+      </select></div>`;
+  }).join('');
 }
 window.renderUsuarios = ()=>{
   const tb=$('tbl-usuarios'); if(!tb) return;
   const rows=[...usuariosCache].sort((a,b)=>(a.nombre||a.email||'').localeCompare(b.nombre||b.email||''));
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="4" class="empty">Sin usuarios</td></tr>'; return; }
-  tb.innerHTML=rows.map(u=>`<tr>
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="5" class="empty">Sin usuarios</td></tr>'; return; }
+  tb.innerHTML=rows.map(u=>{
+    const admin = u.admin===true || u.rol==='admin';
+    // roles por grupo (nuevo o compat)
+    let roles=u.roles;
+    if(!roles){
+      const r = u.rol==='editor'?'editor':'lector';
+      roles={}; (u.grupos||['default']).forEach(g=>roles[g]=r);
+    }
+    const grs = Object.keys(roles).map(gid=>{
+      const g=gruposCache.find(x=>x.id===gid);
+      const cls = roles[gid]==='editor'?'badge-green':'badge-blue';
+      return `<span class="badge ${cls}" style="margin:1px" title="${roles[gid]==='editor'?'Editor':'Solo lectura'}">${g?g.nombre:gid}: ${roles[gid]==='editor'?'Ed':'L'}</span>`;
+    }).join(' ') || '<span class="muted">—</span>';
+    return `<tr>
     <td><b>${u.nombre||'—'}</b></td><td class="muted">${u.email||u.id}</td>
-    <td><span class="badge ${u.rol==='editor'?'badge-green':'badge-blue'}">${u.rol==='editor'?'Editor':'Solo lectura'}</span></td>
+    <td>${admin?'<span class="badge badge-amber">Admin</span>':'<span class="muted">—</span>'}</td>
+    <td>${grs}</td>
     <td style="white-space:nowrap">
-      <button class="btn btn-ghost btn-sm" onclick="cambiarRol('${u.id}')">Cambiar rol</button>
+      <button class="btn-icon" title="Editar" onclick="editarUsuario('${u.id}')">✏️</button>
       ${u.id===emailActual?'':`<button class="btn-icon del" onclick="quitarUsuario('${u.id}')">🗑️</button>`}
-    </td></tr>`).join('');
-};
-window.cambiarRol = async (email)=>{
-  if(rolActual!=='editor') return;
-  const u=usuariosCache.find(x=>x.id===email); if(!u) return;
-  const nuevo = u.rol==='editor' ? 'lector' : 'editor';
-  await updateDoc(doc(db,'usuarios',email),{rol:nuevo});
-  showAlert('Rol actualizado'); cargarUsuarios();
+    </td></tr>`;
+  }).join('');
 };
 window.quitarUsuario = async (email)=>{
-  if(rolActual!=='editor') return;
+  if(!esAdmin) return;
   if(email===emailActual){ showAlert('No podés quitarte a vos mismo'); return; }
   await deleteDoc(doc(db,'usuarios',email));
   showAlert('Acceso revocado'); cargarUsuarios();
+};
+
+/* ---- GESTIÓN DE GRUPOS (solo admin) ---- */
+let editGr=null;
+window.guardarGrupo = async ()=>{
+  if(!esAdmin) return;
+  const nombre=$('gr-nombre').value.trim();
+  if(!nombre){ showAlert('Ingresá el nombre del grupo'); return; }
+  const data={nombre, notas:$('gr-notas').value.trim()};
+  if(editGr){ await updateDoc(doc(db,'grupos',editGr), data); editGr=null; showAlert('🗂️ Grupo actualizado'); }
+  else { data.creado=hoy(); await addDoc(collection(db,'grupos'), data); showAlert('🗂️ Grupo creado'); }
+  $('gr-nombre').value=''; $('gr-notas').value='';
+};
+window.editarGrupo = (id)=>{
+  const g=gruposCache.find(x=>x.id===id); if(!g) return;
+  $('gr-nombre').value=g.nombre||''; $('gr-notas').value=g.notas||'';
+  editGr=id; irA('grupos');
+};
+window.eliminarGrupo = async (id)=>{
+  if(!esAdmin) return;
+  const conRegistros = ['propiedades','inquilinos','contratos','cobros','gastos','garantias','liquidaciones']
+    .some(k=>raw[k].some(x=>(x.grupoId||'default')===id));
+  if(conRegistros){ showAlert('El grupo tiene registros, no se puede eliminar'); return; }
+  const conUsuarios = usuariosCache.some(u=>(u.grupos||[]).includes(id));
+  if(conUsuarios){ showAlert('Hay usuarios con acceso a este grupo, quitalos primero'); return; }
+  if(!confirm('¿Eliminar el grupo?')) return;
+  await deleteDoc(doc(db,'grupos',id));
+  showAlert('Grupo eliminado');
+};
+window.renderGrupos = ()=>{
+  const tb=$('tbl-grupos'); if(!tb) return;
+  if(!gruposCache.length){ tb.innerHTML='<tr><td colspan="4" class="empty">Sin grupos</td></tr>'; return; }
+  tb.innerHTML=[...gruposCache].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).map(g=>{
+    const us=usuariosCache.filter(u=>(u.grupos||[]).includes(g.id)).map(u=>u.nombre||u.id).join(', ')||'—';
+    return `<tr>
+      <td><b>${g.nombre}</b></td><td class="muted">${g.notas||'—'}</td>
+      <td class="muted">${us}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-icon" title="Editar" onclick="editarGrupo('${g.id}')">✏️</button>
+        ${g.id==='default'?'':`<button class="btn-icon del" onclick="eliminarGrupo('${g.id}')">🗑️</button>`}
+      </td></tr>`;
+  }).join('');
 };
 
 /* defaults de fecha */
